@@ -1,1 +1,1 @@
-:smile:
+_smile_

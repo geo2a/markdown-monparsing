@@ -146,4 +146,11 @@ p `chainl1` op = do
                      rest (f a b))
                   `mplus` return a
 
+sepby :: Parser a -> Parser b -> Parser [a]
+p `sepby` sep = (p `sepby1` sep) `mplus` return []
 
+sepby1:: Parser a -> Parser b -> Parser [a]
+p `sepby1` sep = do 
+  a <- p
+  as <- many (do {sep; p})
+  return (a:as)
