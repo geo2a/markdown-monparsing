@@ -1,0 +1,1 @@
+This repository contains materials connected monadic parsers in Haskell and developing source code of parser for markdown documents.
