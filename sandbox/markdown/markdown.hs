@@ -8,13 +8,22 @@ import Parsers
 data Inline = Plain String
             | Bold String
             | Italic String
-  deriving (Show)
+  deriving (Show,Eq)
 
 -- |Represents block entity
-data Block = Header (String,String)
-  deriving (Show) 
+data Block = Blank
+           | Header (String,String)
+  deriving (Show,Eq) 
 
--------------------Parsers for emphasis words (like bold)-------------------
+-----------------------------------------------------------------
+-------------------Parsers for Inline elements-------------------
+-----------------------------------------------------------------
+
+-------------------Parsers for single word (word may be plain, bold or italic)-------------------
+
+-- |Parse plain text
+plain :: Parser Inline
+plain = (liftM Plain) word
 
 -- |Parse italic text (html <em>)
 italic :: Parser Inline
@@ -31,17 +40,49 @@ bold = do
        bracket underlines word underlines
   return . Bold $ x  
 
+-- Вопрос о порядке применения парсеров 
 f :: Parser Inline
-f = do
-  words <- sepby1 word spaces 
-  --words <- many (spaces `mplus` word `mplus` spaces)
-  return . Plain . concat $ words 
+f = bold `mplus` italic `mplus` plain
 
+-------------------Attemps to parse a line of text-------------------
 
--- |Get header text
+-- |Парсит слова (plain, bold, italic), разделённые пробелами
+-- Ломается, если, например, внутри plain есть * 
+line = sepby f (char ' ')
+
+line_test1 = (fst . head $ parse line "acb **abc**  _de_") == 
+             [Plain "acb",Bold "abc",Plain "",Italic "de"]
+
+-----------------------------------------------------------------
+-------------------Parsers for Block elements--------------------
+-----------------------------------------------------------------
+
+-- |Parse blank line
+blank :: Parser Block
+blank = do
+  many (sat wspaceOrTab)
+  char '\n'
+  return Blank 
+    where wspaceOrTab = (\x -> x == ' ' || x == '\t')
+
+-- |Parse header
+-- Пока в нашем заголовке только одно слово
 header :: Parser Block 
 header = do
-  sharps <- many (char '#') 
+  hashes <- many (char '#') 
   spaces
-  x <- many alphanum
-  return $ Header (sharps,x)
+  x <- word
+  spaces 
+  return $ Header (hashes,x)
+
+-- |Parse paragraph
+
+-----------------------------------------------------------------
+-------------------Parsers for whole Document--------------------
+-----------------------------------------------------------------
+
+-- |Парсит документ и возвращает список блоков
+--doc :: Parser [Block]
+--doc = do
+--  x <- header `mplus` blank
+--  return x
