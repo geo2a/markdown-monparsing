@@ -16,27 +16,20 @@ data Block = Header (String,String)
 
 -------------------Parsers for emphasis words (like bold)-------------------
 
--- Неготово
-emphasised :: [Char] -> Parser Inline
-emphasised c =
-  twoChars '*' `mplus` twoChars '_'
-  x <- word
-  twoChars '*' `mplus` twoChars '_'
-  return . Bold $ x
-    where
-      twoChars c = do
-        char c
+-- |Parse italic text (html <em>)
+italic :: Parser Inline
+italic = liftM Italic $  
+  bracket (char '*') word (char '*') `mplus`
+  bracket (char '_') word (char '_')  
 
---bold :: Parser Inline
---bold = do
---  twoChars '*' `mplus` twoChars '_'
---  x <- word
---  twoChars '*' `mplus` twoChars '_'
---  return . Bold $ x
---    where
---      twoChars c = do
---        char c
-        --char c
+-- |Parse bold text (html <strong>)  
+bold :: Parser Inline
+bold = do
+  let asterisks = char '*' >> char '*'
+  let underlines = char '_' >> char '_'
+  x <- bracket asterisks word asterisks `mplus` 
+       bracket underlines word underlines
+  return . Bold $ x  
 
 f :: Parser Inline
 f = do
