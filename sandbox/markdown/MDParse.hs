@@ -1,6 +1,14 @@
+module MDParse where
+
 import Control.Monad
 
 import Parsers
+
+-----------------------------------------------------------------
+---------------------------Ограничения---------------------------
+-----------------------------------------------------------------
+--Блоки разделены одной пустой строкой
+--Слова в строках -- одним пробелом
 
 -------------------Data Types-------------------
 
@@ -12,7 +20,8 @@ data Inline = Plain String
 
 -- |Represents block entity
 data Block = Blank
-           | Header (String,String)
+           | Header (Int,Inline)
+           | Paragraph [Inline]
   deriving (Show,Eq) 
 
 -----------------------------------------------------------------
@@ -40,18 +49,25 @@ bold = do
        bracket underlines word underlines
   return . Bold $ x  
 
--- Вопрос о порядке применения парсеров 
+-- TODO: Переименовать эту функцию
 f :: Parser Inline
-f = bold `mplus` italic `mplus` plain
+f = bold <|> italic <|> plain
 
 -------------------Attemps to parse a line of text-------------------
 
--- |Парсит слова (plain, bold, italic), разделённые пробелами
+-- |Парсит слова (plain, bold, italic), разделённые одним пробелом
 -- Ломается, если, например, внутри plain есть * 
-line = sepby f (char ' ')
+line :: Parser [Inline]
+line = do
+  l <- sepby f (char ' ')
+  return l
 
 line_test1 = (fst . head $ parse line "acb **abc**  _de_") == 
              [Plain "acb",Bold "abc",Plain "",Italic "de"]
+
+-- Парсит несколько подряд идущих линий, не уверен насчёт типа этой функции
+lines :: Parser [[Inline]]
+lines = sepby line newline
 
 -----------------------------------------------------------------
 -------------------Parsers for Block elements--------------------
@@ -70,21 +86,18 @@ blank = do
 header :: Parser Block 
 header = do
   spaces
-  hashes <- many (char '#') 
+  hashes <- mmany (char '#') 
   spaces
-  x <- word
+  x <- plain
   spaces 
-  char '\n'
-  return $ Header (hashes,x)
+  --char '\n'
+  return $ Header (length hashes,x)
 
 -- |Parse paragraph
 
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
 -----------------------------------------------------------------
-
-g :: Parser Block
-g = (many blank) >> header
 
 -- |Парсит документ и возвращает список блоков
 --doc :: Parser [Block]

@@ -25,6 +25,7 @@ p1 <|> p2 = Parser $ \cs -> case parse (p1 `mplus` p2) cs of
                           []  -> []
                           x:_ -> [x]
 
+-- | Determenistic many
 mmany :: Parser a -> Parser [a]
 mmany p = mmany1 <|> mmany0
   where mmany0 = return []
@@ -73,6 +74,9 @@ letter = lower `mplus` upper
 -- |Anycase letter or decimal digit
 alphanum :: Parser Char
 alphanum = letter `mplus` digit
+
+newline :: Parser Char
+newline  = char '\n'  
 ----------------Парсеры для групп символов----------------
 
 -- |Word (string of letters)
@@ -133,7 +137,7 @@ bracket open p close = do
 
 ----------------"Lexical issues"----------------
 spaces :: Parser String
-spaces = many (sat isSpace)
+spaces = mmany (sat isSpace)
   where 
     isSpace = (\x -> x == ' ' || x == '\n' || x == '\t')
 
