@@ -17,6 +17,23 @@ instance MonadPlus Parser where
   mzero = Parser (\cs -> [])
   p `mplus` q = Parser (\cs -> parse p cs ++ parse q cs)
 
+-- ------------////////////||||||||\\\\\\\\\||||||//////////-----------
+
+-- | Determenistic analog of mplus (return first result)
+(<|>) :: Parser a -> Parser a -> Parser a
+p1 <|> p2 = Parser $ \cs -> case parse (p1 `mplus` p2) cs of
+                          []  -> []
+                          x:_ -> [x]
+
+mmany :: Parser a -> Parser [a]
+mmany p = mmany1 <|> mmany0
+  where mmany0 = return []
+        mmany1 = do x  <- p
+                    xs <- mmany p
+                    return (x:xs)
+
+-- ------------////////////||||||||\\\\\\\\\||||||//////////-----------
+
 -- Условимся далее, что to consume == кушать
 
 -- |Кушает один произвольный символ
@@ -59,40 +76,28 @@ alphanum = letter `mplus` digit
 ----------------Парсеры для групп символов----------------
 
 -- |Word (string of letters)
+-- | <|> - детерминированный mplus
 word :: Parser String
-word = neWord `mplus` return ""
+word = nonEmpty <|> return ""
   where
-    neWord = do
+    nonEmpty = do
       x <- letter
       xs <- word
       return (x:xs)
 
 -- |Applyes parser p many times
 many :: Parser a -> Parser [a]
-many p = many1 p `mplus` return []
-
-many1 :: Parser a -> Parser [a]
-many1 p = do 
-  a <- p
-  as <- many p
-  return (a:as)
-
--- |Parse a natural number
-nat :: Parser Int
-nat = do
-  xs <- many1 digit
-  return $ eval xs
-    where
-      eval xs = foldl1 op (map (\x -> ord x - ord '0') xs) 
-      m `op` n = 10*m + n
+many p = many1 p `mplus` many0
+  where
+    many0 = return []
+    many1 p = do 
+      a <- p
+      as <- many p
+      return (a:as)
 
 -- |Parse a specified string
 string :: String -> Parser String
-string "" = return ""
-string (c:cs) = do 
-  char c
-  string cs
-  return (c:cs)
+string = mapM char -- sequence . map char
 
 -- |Parse a token with specific parser, thow away any trailing spaces
 token :: Parser a -> Parser a
@@ -133,24 +138,11 @@ spaces = many (sat isSpace)
     isSpace = (\x -> x == ' ' || x == '\n' || x == '\t')
 
 ----------------Special parsers----------------
-chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
-chainl p op a = (p `chainl1` op) `mplus` return a
-
-chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
-p `chainl1` op = do 
-  a <- p
-  rest a
-    where
-        rest a = (do f <- op
-                     b <- p
-                     rest (f a b))
-                  `mplus` return a
-
 sepby :: Parser a -> Parser b -> Parser [a]
-p `sepby` sep = (p `sepby1` sep) `mplus` return []
-
-sepby1:: Parser a -> Parser b -> Parser [a]
-p `sepby1` sep = do 
-  a <- p
-  as <- many (do {sep; p})
-  return (a:as)
+p `sepby` sep = (p `sepby1` sep) <|> return []
+  where
+    sepby1:: Parser a -> Parser b -> Parser [a]
+    p `sepby1` sep = do 
+      a <- p
+      as <- many (do {sep; p})
+      return (a:as)

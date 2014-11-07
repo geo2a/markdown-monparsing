@@ -69,10 +69,12 @@ blank = do
 -- Пока в нашем заголовке только одно слово
 header :: Parser Block 
 header = do
+  spaces
   hashes <- many (char '#') 
   spaces
   x <- word
   spaces 
+  char '\n'
   return $ Header (hashes,x)
 
 -- |Parse paragraph
@@ -80,6 +82,9 @@ header = do
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
 -----------------------------------------------------------------
+
+g :: Parser Block
+g = (many blank) >> header
 
 -- |Парсит документ и возвращает список блоков
 --doc :: Parser [Block]
