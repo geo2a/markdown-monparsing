@@ -12,16 +12,18 @@ import Parsers
 
 -------------------Data Types-------------------
 
--- |Represent inline entity, just a string for this moment  
-data Inline = Plain String
-            | Bold String
-            | Italic String
-  deriving (Show,Eq)
+type Document = [Block]
 
 -- |Represents block entity
 data Block = Blank
            | Header (Int,Inline)
            | Paragraph [Inline]
+  deriving (Show,Eq)
+
+-- |Represent inline entity, just a string for this moment  
+data Inline = Plain String
+            | Bold String
+            | Italic String
   deriving (Show,Eq) 
 
 -----------------------------------------------------------------
