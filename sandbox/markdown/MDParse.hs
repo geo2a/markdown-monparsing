@@ -61,7 +61,15 @@ f = bold <|> italic <|> plain
 -- Ломается, если, например, внутри plain есть * 
 line :: Parser [Inline]
 line = do
-  l <- sepby f (char ' ')
+  --l <- sepby f (char ' ')
+  l <- sepby f (many (char ' '))
+  return l
+
+-- works with:       (letter, many (char ' '))
+--                   (word, char ' ')
+-- don't work with : (word, many (char ' ')) 
+line' = do
+  l <- sepby word (many (char ' ')) 
   return l
 
 line_test1 = (fst . head $ parse line "acb **abc**  _de_") == 
@@ -102,7 +110,8 @@ header = do
 -----------------------------------------------------------------
 
 -- |Парсит документ и возвращает список блоков
---doc :: Parser [Block]
---doc = do
---  x <- header `mplus` blank
---  return x
+doc :: Parser [Block]
+doc = do
+  h <- header
+  ls <- MDParse.lines
+  return $ h:[Paragraph . concat $ ls]

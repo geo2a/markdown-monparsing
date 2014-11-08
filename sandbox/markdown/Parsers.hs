@@ -1,6 +1,7 @@
 module Parsers where
 
 import Control.Monad
+--import Data.Monoid
 import Data.Char(ord)
 
 newtype Parser a = Parser (String -> [(a,String)])
@@ -16,6 +17,10 @@ instance Monad Parser where
 instance MonadPlus Parser where
   mzero = Parser (\cs -> [])
   p `mplus` q = Parser (\cs -> parse p cs ++ parse q cs)
+
+--instance Monoid (Parser a) where
+--  mempty = Parser (\cs -> [])
+--  p `mappend` q = Parser (\cs -> parse p cs ++ parse q cs) 
 
 -- ------------////////////||||||||\\\\\\\\\||||||//////////-----------
 
@@ -81,12 +86,19 @@ newline  = char '\n'
 
 -- |Word (string of letters)
 -- | <|> - детерминированный mplus
+
 word :: Parser String
-word = nonEmpty <|> return ""
+word = do
+  l <- letter
+  ls <- word'
+  return $ l:ls
+
+word' :: Parser String
+word' = nonEmpty <|> return ""
   where
     nonEmpty = do
       x <- letter
-      xs <- word
+      xs <- word'
       return (x:xs)
 
 -- |Applyes parser p many times
@@ -137,7 +149,7 @@ bracket open p close = do
 
 ----------------"Lexical issues"----------------
 spaces :: Parser String
-spaces = mmany (sat isSpace)
+spaces = many (sat isSpace)
   where 
     isSpace = (\x -> x == ' ' || x == '\n' || x == '\t')
 

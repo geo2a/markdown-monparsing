@@ -12,17 +12,14 @@ main = do
   
   ------------markdown parsing experiments------------
   putStrLn $ "Raw contents of markdown file " ++ fname ++ ": "
-  print $ parse (sepby line newline) . snd . head $ parse header raw
-  let a = fst . head $ parse g raw
+  putStrLn raw
+  --print $ parse (sepby line newline) . snd . head $ parse header raw
+  let a = fst . head $ parse doc raw
 
   ------------html generation experiments------------
   --let b = fst . head $ parse bold "**bold**"
   --print $ genInline b
-  print $ serialize a
-  writeFile "test.html" (serialize a)
-
-g :: Parser [Block]
-g = do
-  h <- header
-  ls <- MDParse.lines
-  return $ h:[Paragraph . concat $ ls]
+  putStrLn "\nGenerated html: "
+  let html = serialize a
+  print $ html
+  writeFile "test.html" html
