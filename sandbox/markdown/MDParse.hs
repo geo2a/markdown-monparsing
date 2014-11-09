@@ -68,8 +68,10 @@ line_test1 = (fst . head $ parse line "acb   **abc**  _de_") ==
              [Plain "acb",Bold "abc",Italic "de"]
 
 -- Парсит несколько подряд идущих линий, не уверен насчёт типа этой функции
-lines :: Parser [Line]
-lines = sepby line newline
+lines :: Parser Block
+lines = do
+  p <- sepby line newline
+  return . Paragraph $ p
 
 -----------------------------------------------------------------
 -------------------Parsers for Block elements--------------------
@@ -83,26 +85,25 @@ blank = do
   return Blank
 
 -- |Parse header
--- Пока в нашем заголовке только одно слово
+-- Пока в нашем заголовке только одна строка, 
+-- поддерживаются только заголовки в стиле #
 header :: Parser Block 
 header = do
   spaces
-  hashes <- many (char '#') 
-  spaces
-  text <- many (token (bold <|> italic <|> plain))
-  spaces 
-  --char '\n'
+  hashes <- token (many (char '#')) 
+  text <- line
   return $ Header (length hashes,text)
 
 -- |Parse paragraph
-
+--paragraph :: Parser Paragraph
+--paragraph 
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
 -----------------------------------------------------------------
 
 -- |Парсит документ и возвращает список блоков
---doc :: Parser [Block]
---doc = do
---  h <- header
---  ls <- MDParse.lines
---  return $ h:[Paragraph . concat $ ls]
+doc :: Parser [Block]
+doc = do
+  h <- header
+  ls <- MDParse.lines
+  return $ h:[ls]
