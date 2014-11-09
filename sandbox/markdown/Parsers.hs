@@ -1,8 +1,9 @@
 module Parsers where
 
 import Control.Monad
---import Data.Monoid
 import Data.Char(ord)
+
+import Helpers
 
 newtype Parser a = Parser (String -> [(a,String)])
 
@@ -18,37 +19,19 @@ instance MonadPlus Parser where
   mzero = Parser (\cs -> [])
   p `mplus` q = Parser (\cs -> parse p cs ++ parse q cs)
 
---instance Monoid (Parser a) where
---  mempty = Parser (\cs -> [])
---  p `mappend` q = Parser (\cs -> parse p cs ++ parse q cs) 
-
--- ------------////////////||||||||\\\\\\\\\||||||//////////-----------
-
 -- | Determenistic analog of mplus (return first result)
 (<|>) :: Parser a -> Parser a -> Parser a
 p1 <|> p2 = Parser $ \cs -> case parse (p1 `mplus` p2) cs of
                           []  -> []
                           x:_ -> [x]
 
--- | Determenistic many
-mmany :: Parser a -> Parser [a]
-mmany p = mmany1 <|> mmany0
-  where mmany0 = return []
-        mmany1 = do x  <- p
-                    xs <- mmany p
-                    return (x:xs)
-
--- ------------////////////||||||||\\\\\\\\\||||||//////////-----------
-
--- Условимся далее, что to consume == кушать
-
--- |Кушает один произвольный символ
+-- |Consumes one symbol of any kind 
 item :: Parser Char
 item = Parser (\inp -> case inp of
                         [] -> []
                         (x:xs) -> [(x,xs)])
 
--- |Разборчиво кушает символ, только если тот удовлетворяет предикату
+-- |Consumes item only if it satisfies predicate
 sat :: (Char -> Bool) -> Parser Char
 sat p = do
   x <- item 
@@ -56,7 +39,7 @@ sat p = do
 
 ----------------Парсеры для одиночных символов----------------
 
--- |Куашет символ только в том случае, если он совпадает с указанным
+-- |Consumes item only if it is equal to specified char
 char :: Char -> Parser Char
 char x = sat (\y -> x == y)
 
@@ -84,26 +67,24 @@ newline :: Parser Char
 newline  = char '\n'  
 ----------------Парсеры для групп символов----------------
 
--- |Word (string of letters)
--- | <|> - детерминированный mplus
-
+-- |Word (non-empty string of letters)
 word :: Parser String
 word = do
   l <- letter
   ls <- word'
   return $ l:ls
 
-word' :: Parser String
-word' = nonEmpty <|> return ""
+-- |Same as word, but string may be empty 
+word' = nonEmpty `mplus` return ""
   where
     nonEmpty = do
       x <- letter
       xs <- word'
       return (x:xs)
 
--- |Applyes parser p many times
+-- |Applyes parser p zero or more times
 many :: Parser a -> Parser [a]
-many p = many1 p `mplus` many0
+many p = many1 p <|> many0
   where
     many0 = return []
     many1 p = do 
@@ -150,12 +131,10 @@ bracket open p close = do
 ----------------"Lexical issues"----------------
 spaces :: Parser String
 spaces = many (sat isSpace)
-  where 
-    isSpace = (\x -> x == ' ' || x == '\n' || x == '\t')
 
 ----------------Special parsers----------------
 sepby :: Parser a -> Parser b -> Parser [a]
-p `sepby` sep = (p `sepby1` sep) <|> return []
+p `sepby` sep = (p `sepby1` sep) `mplus` return []
   where
     sepby1:: Parser a -> Parser b -> Parser [a]
     p `sepby1` sep = do 
