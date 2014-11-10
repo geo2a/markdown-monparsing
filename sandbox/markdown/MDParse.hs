@@ -22,7 +22,8 @@ data Block = Blank
   deriving (Show,Eq)
 
 -- |Represents line as list of inline elements (words)
-type Line = [Inline]
+data Line = Empty | NonEmpty [Inline]
+  deriving (Show,Eq)
 
 -- |Represent inline entity, just a string for this moment  
 -- TODO: Добавить в AST сущности для пробелов и пунктуации, 
@@ -64,18 +65,26 @@ bold = do
 -- |Парсит слова (plain, bold, italic), разделённые одним пробелом
 -- Ломается, если, например, внутри plain есть * 
 line :: Parser Line
-line = do
+line = emptyLine `mplus` nonEmptyLine
+
+emptyLine :: Parser Line
+emptyLine = do
+  many (sat wspaceOrTab)
+  char '\n'
+  return Empty
+
+-- TODO: Получилось как-то сложно, подумать, как бы попроще
+nonEmptyLine :: Parser Line
+nonEmptyLine = do
+  many (sat wspaceOrTab)
   l <- sepby (bold <|> italic <|> plain) (many (char ' '))
-  return l
+  many (sat wspaceOrTab)
+  char '\n'
+  return . NonEmpty $ l
 
-line_test1 = (fst . head $ parse line "acb   **abc**  _de_") == 
-             [Plain "acb",Bold "abc",Italic "de"]
-
--- Парсит несколько подряд идущих линий, не уверен насчёт типа этой функции
-lines :: Parser Block
-lines = do
-  p <- sepby line newline
-  return . Paragraph $ p
+line_test1 = 
+  (fst . head $ parse nonEmptyLine "acb   **abc**  _de_") == 
+    NonEmpty [Plain "acb",Bold "abc",Italic "de"]
 
 -----------------------------------------------------------------
 -------------------Parsers for Block elements--------------------
@@ -95,19 +104,29 @@ header :: Parser Block
 header = do
   spaces
   hashes <- token (many (char '#')) 
-  text <- line
+  text <- nonEmptyLine
   return $ Header (length hashes,text)
 
+
+-- Парсит несколько подряд идущих линий, не уверен насчёт типа этой функции
+lines :: Parser Block
+lines = do
+  p <- sepby nonEmptyLine newline
+  return . Paragraph $ p
+
 -- |Parse paragraph
---paragraph :: Parser Paragraph
---paragraph 
+paragraph :: Parser Block
+paragraph = do
+  l <- bracket emptyLine nonEmptyLine emptyLine
+  return . Paragraph $ [l]
+
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
 -----------------------------------------------------------------
 
 -- |Парсит документ и возвращает список блоков
-doc :: Parser [Block]
+doc :: Parser Document
 doc = do
   h <- header
-  ls <- MDParse.lines
+  ls <- paragraph
   return $ h:[ls]
