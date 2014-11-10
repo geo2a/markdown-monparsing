@@ -21,9 +21,13 @@ data Block = Blank
            | Paragraph [Line]
   deriving (Show,Eq)
 
+-- |Represents line as list of inline elements (words)
 type Line = [Inline]
 
 -- |Represent inline entity, just a string for this moment  
+-- TODO: Добавить в AST сущности для пробелов и пунктуации, 
+-- Видимо, следует создать отдельный тип для слов (из трёх 
+-- конструкторов)
 data Inline = Plain String
             | Bold String
             | Italic String
