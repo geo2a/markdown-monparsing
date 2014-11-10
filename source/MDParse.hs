@@ -68,22 +68,19 @@ line :: Parser Line
 line = emptyLine `mplus` nonEmptyLine
 
 emptyLine :: Parser Line
-emptyLine = do
-  many (sat wspaceOrTab)
-  char '\n'
-  return Empty
+emptyLine = many (sat wspaceOrTab) >> char '\n' >> return Empty
 
 -- TODO: Получилось как-то сложно, подумать, как бы попроще
 nonEmptyLine :: Parser Line
 nonEmptyLine = do
   many (sat wspaceOrTab)
-  l <- sepby (bold <|> italic <|> plain) (many (char ' '))
+  l <- sepby1 (bold <|> italic <|> plain) (many (char ' '))
   many (sat wspaceOrTab)
   char '\n'
   return . NonEmpty $ l
 
 line_test1 = 
-  (fst . head $ parse nonEmptyLine "acb   **abc**  _de_") == 
+  (fst . head $ parse nonEmptyLine "acb   **abc**  _de_\n") == 
     NonEmpty [Plain "acb",Bold "abc",Italic "de"]
 
 -----------------------------------------------------------------
@@ -109,16 +106,17 @@ header = do
 
 
 -- Парсит несколько подряд идущих линий, не уверен насчёт типа этой функции
-lines :: Parser Block
-lines = do
-  p <- sepby nonEmptyLine newline
-  return . Paragraph $ p
+--lines :: Parser Block
+--lines = do
+--  p <- sepby nonEmptyLine newline
+--  return . Paragraph $ p
 
 -- |Parse paragraph
 paragraph :: Parser Block
 paragraph = do
-  l <- bracket emptyLine nonEmptyLine emptyLine
-  return . Paragraph $ [l]
+  --l <- bracket emptyLine nonEmptyLine emptyLine
+  l <- many nonEmptyLine
+  return . Paragraph $ l
 
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
@@ -128,5 +126,7 @@ paragraph = do
 doc :: Parser Document
 doc = do
   h <- header
+  emptyLine
   ls <- paragraph
-  return $ h:[ls]
+  lls <- paragraph
+  return $ h:[ls]++[lls]

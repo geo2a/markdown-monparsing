@@ -135,9 +135,9 @@ spaces = many (sat isSpace)
 ----------------Special parsers----------------
 sepby :: Parser a -> Parser b -> Parser [a]
 p `sepby` sep = (p `sepby1` sep) `mplus` return []
-  where
-    sepby1:: Parser a -> Parser b -> Parser [a]
-    p `sepby1` sep = do 
-      a <- p
-      as <- many (do {sep; p})
-      return (a:as)
+
+sepby1:: Parser a -> Parser b -> Parser [a]
+p `sepby1` sep = do 
+  a <- p
+  as <- many (do {sep; p})
+  return (a:as)
