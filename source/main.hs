@@ -14,18 +14,8 @@ main = do
   putStrLn $ "Raw contents of markdown file " ++ fname ++ ": "
   putStrLn raw
   --print $ parse (sepby line newline) . snd . head $ parse header raw
-  let a = fst . head $ parse doc raw
-  --print a
-  print $ parse h raw
-
-h :: Parser Document 
-h = do
-  h <- header
-  emptyLine
-  p1 <- paragraph
-  emptyLine
-  p2 <- paragraph
-  return $ h:[p1,p2]
+  let a = parse doc raw
+  print a
 
   ------------html generation experiments------------
   --let b = fst . head $ parse bold "**bold**"

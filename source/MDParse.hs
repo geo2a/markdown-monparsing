@@ -87,13 +87,6 @@ line_test1 =
 -------------------Parsers for Block elements--------------------
 -----------------------------------------------------------------
 
--- |Parse blank line
-blank :: Parser Block
-blank = do
-  many (sat wspaceOrTab)
-  char '\n'
-  return Blank
-
 -- |Parse header
 -- Пока в нашем заголовке только одна строка, 
 -- поддерживаются только заголовки в стиле #
@@ -104,19 +97,18 @@ header = do
   text <- nonEmptyLine
   return $ Header (length hashes,text)
 
-
--- Парсит несколько подряд идущих линий, не уверен насчёт типа этой функции
---lines :: Parser Block
---lines = do
---  p <- sepby nonEmptyLine newline
---  return . Paragraph $ p
-
 -- |Parse paragraph
 paragraph :: Parser Block
 paragraph = do
   --l <- bracket emptyLine nonEmptyLine emptyLine
-  l <- many nonEmptyLine
+  l <- many1 nonEmptyLine
   return . Paragraph $ l
+
+-- TODO: Эта функция делает почти тоже самое, что и emptyLine, 
+-- TODO непонятно, как совсместить их в одну, или, по крайней мере, 
+-- TODO избежать дублирования кода
+blank :: Parser Block
+blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
@@ -126,7 +118,5 @@ paragraph = do
 doc :: Parser Document
 doc = do
   h <- header
-  emptyLine
-  ls <- paragraph
-  lls <- paragraph
-  return $ h:[ls]++[lls]
+  ls <- many1 (paragraph `mplus` blank)
+  return $ h:ls

@@ -87,10 +87,12 @@ many :: Parser a -> Parser [a]
 many p = many1 p <|> many0
   where
     many0 = return []
-    many1 p = do 
-      a <- p
-      as <- many p
-      return (a:as)
+
+many1 :: Parser a -> Parser [a]
+many1 p = do 
+  a <- p
+  as <- many p
+  return (a:as)
 
 -- |Parse a specified string
 string :: String -> Parser String
