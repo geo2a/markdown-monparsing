@@ -25,9 +25,7 @@ data Line = Empty | NonEmpty [Inline]
   deriving (Show,Eq)
 
 -- |Represent inline entity, just a string for this moment  
--- TODO: Добавить в AST сущности для пробелов и пунктуации, 
--- Видимо, следует создать отдельный тип для слов (из трёх 
--- конструкторов)
+-- Что делать с пунктуацией и пробелами? 
 data Inline = Plain String
             | Bold String
             | Italic String
@@ -91,8 +89,8 @@ line_test1 =
 -- поддерживаются только заголовки в стиле #
 header :: Parser Block 
 header = do
-  spaces
-  hashes <- token (many (char '#')) 
+  many (sat wspaceOrTab) -- spaces, но без \n, TODO^: дать этой функции имя
+  hashes <- token (many1 (char '#')) 
   text <- nonEmptyLine
   return $ Header (length hashes,text)
 
@@ -116,6 +114,6 @@ blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 -- |Парсит документ и возвращает список блоков
 doc :: Parser Document
 doc = do
-  h <- header
-  ls <- many1 (paragraph `mplus` blank)
-  return $ h:ls
+  --h <- header
+  ls <- many1 (blank `mplus` header `mplus` paragraph)
+  return $ ls

@@ -20,6 +20,15 @@ testSat = [
   ([],parse (sat isDigit) "a23")
   ]
 
+--testWord = [
+--  ([],parse word []),
+--  ([("ab"," ba"),("a","b ba")],parse word "ab ba")
+--  ]
+
+-----------------------------------------------------------------
+--------------Test for parsers for groups of chars---------------
+-----------------------------------------------------------------
+
 allTest = testChar ++ testSat
 
 main = runTestTT . TestList . map (uncurry $ testAssertEqual "") $ allTest
