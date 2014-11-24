@@ -1,7 +1,6 @@
 module Parsers where
 
 import Control.Monad
-import Data.Char(ord)
 
 import Helpers
 
@@ -75,6 +74,7 @@ word = do
   return $ l:ls
 
 -- |Same as word, but string may be empty 
+word' :: Parser String
 word' = nonEmpty `mplus` return ""
   where
     nonEmpty = do
