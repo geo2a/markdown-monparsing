@@ -1,4 +1,6 @@
--- |To load with ghci type: ghci tests.hs -i../source/
+module Main (
+    main
+) where
 
 import Test.HUnit
 import Data.Char
