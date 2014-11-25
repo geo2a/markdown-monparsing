@@ -97,6 +97,7 @@ token p = spaces >> p
 symbol :: String -> Parser String
 symbol cs = token (string cs)
 
+-- TODO: Это, похоже, не востребовано
 -- |Parse identifier, i.e. word with leading lowercase letters and trailing alphanums 
 ident :: Parser String
 ident = do
@@ -104,6 +105,7 @@ ident = do
   xs <- many alphanum
   return (x:xs)
 
+-- TODO: Это, похоже, не востребовано
 -- |Same as ident but fails if argument is a member of list of keywords
 identifier :: [String] -> Parser String
 identifier kwords = do
@@ -122,12 +124,17 @@ bracket open p close = do
 spaces :: Parser String
 spaces = many (sat isSpace)
 
-----------------Special parsers----------------
-sepby :: Parser a -> Parser b -> Parser [a]
-p `sepby` sep = (p `sepby1` sep) `mplus` return []
+----------------Repetitions with seporators----------------
+-- TODO: parse (word `sepby1` spaces) "aaa@aaa" == [(["aaa"],"@aaa")]
+-- Разве не должен парсер sepby1 фейлится в таком случае? Разобраться.
+-- Может быть, стоит добавить что-то вроде: guard $ null as?   
 
-sepby1:: Parser a -> Parser b -> Parser [a]
+sepby :: Parser a -> Parser b -> Parser [a]
+p `sepby` sep = (p `sepby1` sep) <|> return []
+
+sepby1 :: Parser a -> Parser b -> Parser [a]
 p `sepby1` sep = do 
   a <- p
-  as <- many (do {sep; p})
+  as <- many (sep >> p)
   return (a:as)
+  -- or this: (:) <$> p <∗> many (sep >> p)
