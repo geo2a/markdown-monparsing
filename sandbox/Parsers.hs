@@ -14,16 +14,24 @@ instance Monad Parser where
   return a = Parser (\cs -> [(a,cs)])
   p >>= f  = Parser (\cs -> concat [parse (f a) cs' |
                             (a,cs') <- parse p cs])
+  fail _   = Parser (\cs -> [])  
 
 instance MonadPlus Parser where
   mzero = Parser (\cs -> [])
-  p `mplus` q = Parser (\cs -> parse p cs ++ parse q cs)
+  p `mplus` q = Parser (\cs -> 
+    let ps = parse p cs if 
+      if bull ps then parse q cs else ps)
 
--- | Determenistic analog of mplus (return first result)
-(<|>) :: Parser a -> Parser a -> Parser a
-p1 <|> p2 = Parser $ \cs -> case parse (p1 `mplus` p2) cs of
-                          []  -> []
-                          x:_ -> [x]
+instance Functor Parser where
+  fmap = liftM
+
+instance Applicative Parser where
+  pure = return
+  (<*>) = ap
+
+instance Alternative Parser where
+  (<|>) = mplus
+  empty = mzero 
 
 -- |Consumes one symbol of any kind 
 item :: Parser Char
