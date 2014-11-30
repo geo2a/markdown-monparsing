@@ -36,7 +36,7 @@ singlesTests = testGroup "Tests for single character parsers" $
 testWord = [
   testCase "Empty word parsed as empty" $ parse word [] @?= [],
   testCase "Parse until meeting with a space" $ 
-    parse word "ab ba" @?=  [("ab"," a")]
+    parse word "ab ba" @?=  [("ab"," ba")]
   ]
 
 manysTests = testGroup "Tests for multy character parsers" $ 
