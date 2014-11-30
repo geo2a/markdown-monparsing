@@ -26,17 +26,21 @@ testSat = [
   testCase "Letter is not a digit" $ parse (sat isDigit) "a23" @?= []
   ]
 
-singlesTests = 
-  testGroup "Test for single character parsers" $ concat [testChar, testSat]
+singlesTests = testGroup "Tests for single character parsers" $ 
+  concat [testChar, testSat]
 
 -----------------------------------------------------------------
 --------------Test for parsers for groups of chars---------------
 -----------------------------------------------------------------
 
 testWord = [
-  ([],parse word []),
-  ([("ab"," ba"),("a","b ba")],parse word "ab ba")
+  testCase "Empty word parsed as empty" $ parse word [] @?= [],
+  testCase "Parse until meeting with a space" $ 
+    parse word "ab ba" @?=  [("ab"," ba")]
   ]
+
+manysTests = testGroup "Tests for multy character parsers" $ 
+  concat [testWord]
 
 --manysTests = buildTestList $ concat [testWord]
 -----------------------------------------------------------------
@@ -46,7 +50,7 @@ testWord = [
 --buildTestList :: (Eq a, Show a) => [(a,a)] -> Test
 --buildTestList = testList . map (uncurry $ testAssertEqual "")
 
-unitTests = testGroup "Unit Tests" [singlesTests]
+unitTests = testGroup "Unit Tests" [singlesTests,manysTests]
 
 tests :: TestTree
 tests = testGroup "Tests" [unitTests]
