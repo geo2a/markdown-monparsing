@@ -1,6 +1,7 @@
 module MDParse where
 
 import Control.Monad
+import Control.Applicative
 
 import Parsers
 import Helpers
@@ -90,7 +91,7 @@ line_test1 =
 header :: Parser Block 
 header = do
   many (sat wspaceOrTab) -- spaces, но без \n, TODO^: дать этой функции имя
-  hashes <- token (many1 (char '#')) 
+  hashes <- token (some (char '#')) 
   text <- nonEmptyLine
   return $ Header (length hashes,text)
 
@@ -98,7 +99,7 @@ header = do
 paragraph :: Parser Block
 paragraph = do
   --l <- bracket emptyLine nonEmptyLine emptyLine
-  l <- many1 nonEmptyLine
+  l <- some nonEmptyLine
   return . Paragraph $ l
 
 -- TODO: Эта функция делает почти тоже самое, что и emptyLine, 
@@ -115,5 +116,5 @@ blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 doc :: Parser Document
 doc = do
   --h <- header
-  ls <- many1 (blank `mplus` header `mplus` paragraph)
+  ls <- some (blank `mplus` header `mplus` paragraph)
   return $ ls
