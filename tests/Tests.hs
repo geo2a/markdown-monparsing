@@ -29,7 +29,7 @@ singlesTests = buildTestList $ concat [testChar, testSat]
 -----------------------------------------------------------------
 
 testWord = [
-  ([],parse word []),
+  ([],parse word "123"),
   ([("ab"," ba"),("a","b ba")],parse word "ab ba")
   ]
 
