@@ -1,4 +1,4 @@
-# Description
+# Description:
 
 This repository contains materials connected with monadic parsers in Haskell and developing source code of parser for markdown documents.
 
