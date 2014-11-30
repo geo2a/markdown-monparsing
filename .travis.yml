@@ -1,4 +1,8 @@
 language: haskell
 script:
   - cabal configure --enable-tests && cabal build && cabal test
+<<<<<<< HEAD
   - ./dist/build/Commom-Parsers-Test/Commom-Parsers-Test
+=======
+  ./dist/build/Commom-Parsers-Test/Commom-Parsers-Test
+>>>>>>> 8fb16bebf4ab35232f722743e1c4f6d586b88f6a
