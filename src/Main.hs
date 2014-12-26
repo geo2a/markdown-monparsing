@@ -6,21 +6,24 @@ import Parsers
 import MDParse
 import HTMLGen
 
+inputFName :: FilePath
+inputFName = "sandbox/md_to_html_usage/test.md"
+
+outputFName :: FilePath
+outputFName = "sandbox/md_to_html_usage/test.html"
+
 main = do
-  [fname] <- getArgs
-  raw <- readFile fname
+  --[fname] <- getArgs
+  raw <- readFile inputFName
   
   ------------markdown parsing experiments------------
-  putStrLn $ "Raw contents of markdown file " ++ fname ++ ": "
+  putStrLn $ "Raw contents of markdown file " ++ inputFName ++ ": "
   putStrLn raw
-  --print $ parse (sepby line newline) . snd . head $ parse header raw
   let a = fst . head $ parse doc raw
   print a
 
   ------------html generation experiments------------
-  --let b = fst . head $ parse bold "**bold**"
-  --print $ genInline b
-  putStrLn "\nGenerated html: "
+  putStrLn $ "\nGenerated html, will be written to " ++ outputFName ++ ": " 
   let html = serialize a
   print $ html
-  writeFile "test.html" html
+  writeFile outputFName html
