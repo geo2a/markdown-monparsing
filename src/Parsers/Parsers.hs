@@ -6,9 +6,7 @@ import Control.Monad
 import Data.Maybe (maybeToList)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
---import Data.Monoid.Factorial (splitAt)
 import Data.Char
-import Data.Text (pack) -- для теста совместимости
 
 --import Helpers
 

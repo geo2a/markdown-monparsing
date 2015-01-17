@@ -7,6 +7,13 @@
   (major1) == 4 && (major2) <  7 || \
   (major1) == 4 && (major2) == 7 && (minor) <= 0)
 
+/* package monoid-subclasses-0.3.6.2 */
+#define VERSION_monoid_subclasses "0.3.6.2"
+#define MIN_VERSION_monoid_subclasses(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  3 || \
+  (major1) == 0 && (major2) == 3 && (minor) <= 6)
+
 /* package HUnit-1.2.5.2 */
 #define VERSION_HUnit "1.2.5.2"
 #define MIN_VERSION_HUnit(major1,major2,minor) (\

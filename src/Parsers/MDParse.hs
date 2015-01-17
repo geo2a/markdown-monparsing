@@ -2,6 +2,7 @@ module MDParse where
 
 import Control.Monad
 import Control.Applicative
+import qualified Data.Monoid.Textual as TM
 
 import Parsers
 import Helpers
@@ -39,17 +40,17 @@ data Inline = Plain String
 -------------------Parsers for single word (word may be plain, bold or italic)-------------------
 
 -- |Parse plain text
-plain :: Parser Inline
+plain :: TM.TextualMonoid t => Parser t Inline
 plain = (liftM Plain) word
 
 -- |Parse italic text (html <em>)
-italic :: Parser Inline
+italic :: TM.TextualMonoid t => Parser t Inline
 italic = liftM Italic $  
   bracket (char '*') word (char '*') `mplus`
   bracket (char '_') word (char '_')  
 
 -- |Parse bold text (html <strong>)  
-bold :: Parser Inline
+bold :: TM.TextualMonoid t => Parser t Inline
 bold = do
   let asterisks = char '*' >> char '*'
   let underlines = char '_' >> char '_'
@@ -62,14 +63,14 @@ bold = do
 
 -- |Парсит слова (plain, bold, italic), разделённые одним пробелом
 -- Ломается, если, например, внутри plain есть * 
-line :: Parser Line
+line :: TM.TextualMonoid t => Parser t Line
 line = emptyLine `mplus` nonEmptyLine
 
-emptyLine :: Parser Line
+emptyLine :: TM.TextualMonoid t => Parser t Line
 emptyLine = many (sat wspaceOrTab) >> char '\n' >> return Empty
 
 -- TODO: Получилось как-то сложно, подумать, как бы попроще
-nonEmptyLine :: Parser Line
+nonEmptyLine :: TM.TextualMonoid t => Parser t Line
 nonEmptyLine = do
   many (sat wspaceOrTab)
   l <- sepby1 (bold <|> italic <|> plain) (many (char ' '))
@@ -88,7 +89,7 @@ line_test1 =
 -- |Parse header
 -- Пока в нашем заголовке только одна строка, 
 -- поддерживаются только заголовки в стиле #
-header :: Parser Block 
+header :: TM.TextualMonoid t => Parser t Block 
 header = do
   many (sat wspaceOrTab) -- spaces, но без \n, TODO^: дать этой функции имя
   hashes <- token (some (char '#')) 
@@ -96,7 +97,7 @@ header = do
   return $ Header (length hashes,text)
 
 -- |Parse paragraph
-paragraph :: Parser Block
+paragraph :: TM.TextualMonoid t => Parser t Block
 paragraph = do
   --l <- bracket emptyLine nonEmptyLine emptyLine
   l <- some nonEmptyLine
@@ -105,7 +106,7 @@ paragraph = do
 -- TODO: Эта функция делает почти тоже самое, что и emptyLine, 
 -- TODO непонятно, как совместить их в одну, или, по крайней мере, 
 -- TODO избежать дублирования кода
-blank :: Parser Block
+blank :: TM.TextualMonoid t => Parser t Block
 blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 
 -----------------------------------------------------------------
@@ -113,7 +114,7 @@ blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 -----------------------------------------------------------------
 
 -- |Парсит документ и возвращает список блоков
-doc :: Parser Document
+doc :: TM.TextualMonoid t => Parser t Document
 doc = do
   --h <- header
   ls <- some (blank `mplus` header `mplus` paragraph)

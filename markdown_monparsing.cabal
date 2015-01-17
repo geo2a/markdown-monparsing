@@ -21,7 +21,8 @@ executable markdown_monparsing
                        Parsers, 
                        MDParse, 
                        HTMLGen
-  build-depends:       base>=4.6
+  build-depends:       base>=4.6,
+                       monoid-subclasses
   hs-source-dirs:      src
                        src/Utils
                        src/Parsers
@@ -36,6 +37,7 @@ test-suite Commom-Parsers-Test
   other-modules:       Parsers,
                        Helpers
   build-depends:       base >= 4 && < 5,
+                       monoid-subclasses,
                        HUnit,
                        tasty >= 0.7,
                        tasty-hunit
