@@ -38,6 +38,7 @@ test-suite Commom-Parsers-Test
   other-modules:       Parsers,
                        Helpers
   build-depends:       base >= 4 && < 5,
+                       mtl,
                        monoid-subclasses,
                        HUnit,
                        tasty >= 0.7,

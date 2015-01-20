@@ -47,7 +47,7 @@ wordTestGroup = testGroup "Test cases for parser word" $ testWord
 testWord = [
   testCase "Empty word parsed as empty" $ parse word "" @?= [],
   testCase "Parse until meeting with a space" $ 
-    parse word "ab ba" @?=  [("ab"," ba")],
+    parse word "ab ba" @?=  [("ab"," ba"),("a","b ba")],
   testCase "Fails on empty input" $
     parse word "" @?= [] 
   ]
