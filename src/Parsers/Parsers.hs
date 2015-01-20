@@ -1,7 +1,5 @@
 module Parsers where
 
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
-
 import Prelude hiding (splitAt)
 import Control.Applicative
 import Control.Monad
@@ -13,8 +11,12 @@ import Data.Char
 
 type Parser t a = StateT t [] a
 
+-- | TODO: Проблема с семантикой MonadPlus/Alternative
+--   По умолчанию, mplus для списка реализуется как ++, видимо
+--   Нужно перегружить инстанс для MonadPlus. Использовать newtype?
+
 parse :: TM.TextualMonoid t => Parser t p -> t -> [(p,t)]
-parse = runStateT
+parse = runStateT 
 
 -- |Consumes one symbol of any kind 
 -- TODO: Попробовать упросить, длинновато получилось
