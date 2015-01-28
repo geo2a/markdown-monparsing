@@ -10,7 +10,8 @@ import Helpers
 -----------------------------------------------------------------
 ---------------------------Ограничения---------------------------
 -----------------------------------------------------------------
---Всех не перечесть, парсим пока только заголовки и параграфы простого текста
+-- Всех не перечесть, парсим пока только заголовки и параграфы простого текста, 
+-- а также списки; вложенные конструкции не допускаются 
 
 -------------------Data Types-------------------
 
@@ -20,6 +21,7 @@ type Document = [Block]
 data Block = Blank
            | Header (Int,Line)
            | Paragraph [Line]
+           | UnorderedList [Line]
   deriving (Show,Eq)
 
 -- |Represents line as list of inline elements (words)
@@ -41,22 +43,23 @@ data Inline = Plain String
 
 -- |Parse plain text
 plain :: TM.TextualMonoid t => Parser t Inline
-plain = (liftM Plain) word
+plain = (liftM Plain) alphanums
 
 -- |Parse italic text (html <em>)
 italic :: TM.TextualMonoid t => Parser t Inline
 italic = liftM Italic $  
-  bracket (char '*') word (char '*') `mplus`
-  bracket (char '_') word (char '_')  
+  bracket (char '*') alphanums (char '*') <|>
+  bracket (char '_') alphanums (char '_')  
 
 -- |Parse bold text (html <strong>)  
 bold :: TM.TextualMonoid t => Parser t Inline
 bold = do
-  let asterisks = char '*' >> char '*'
-  let underlines = char '_' >> char '_'
-  x <- bracket asterisks word asterisks `mplus` 
-       bracket underlines word underlines
-  return . Bold $ x  
+  x <- bracket asterisks alphanums asterisks <|> 
+       bracket underlines alphanums underlines
+  return . Bold $ x
+  where
+    asterisks = char '*' >> char '*'
+    underlines = char '_' >> char '_'  
 -----------------------------------------------------------------
 -------------------Parser for Lines-------------------
 -----------------------------------------------------------------
@@ -103,6 +106,14 @@ paragraph = do
   l <- some nonEmptyLine
   return . Paragraph $ l
 
+unorderdList :: TM.TextualMonoid t => Parser t Block
+unorderdList = do
+  items <- some (token bullet >> line)
+  return . UnorderedList $ items 
+  --where
+bullet :: TM.TextualMonoid t => Parser t Char
+bullet = char '*' <|> char '+' <|> char '-' >>= return
+
 -- TODO: Эта функция делает почти тоже самое, что и emptyLine, 
 -- TODO непонятно, как совместить их в одну, или, по крайней мере, 
 -- TODO избежать дублирования кода
@@ -117,5 +128,13 @@ blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 doc :: TM.TextualMonoid t => Parser t Document
 doc = do
   --h <- header
-  ls <- some (blank `mplus` header `mplus` paragraph)
+  ls <- some (blank <|> header <|> paragraph <|> unorderdList)
   return $ ls
+
+test_md_file :: String 
+test_md_file = 
+  concat ["# The Beatles\n",
+          "Yellow **Submarine**\n",
+          "Strawberry Fields *Forever*\n",
+          "* song 1\n",
+          "* song 2\n"]
