@@ -23,7 +23,8 @@ executable markdown_monparsing
                        HTMLGen
   build-depends:       base>=4.6,
                        mtl,
-                       monoid-subclasses
+                       monoid-subclasses,
+                       directory
   hs-source-dirs:      src
                        src/Utils
                        src/Parsers

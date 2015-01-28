@@ -3,6 +3,8 @@ module HTMLGen where
 import Parsers
 import MDParse
 
+import System.Directory -- for demonstration 
+
 serialize :: Document -> String
 serialize = concatMap genBlock
 
@@ -28,4 +30,11 @@ genInline :: Inline -> String
 genInline (Plain s) = s
 genInline (Bold s) = "<strong>" ++ s ++ "</strong>"
 genInline (Italic s) = "<em>" ++ s ++ "</em>"
+
+testMDtoHTML :: IO ()
+testMDtoHTML = do 
+  path <- getCurrentDirectory 
+  html <- (serialize . fst . head . parse doc) `fmap` 
+    readFile (path ++ "/sandbox/md_to_html_usage/test.md")
+  writeFile (path ++ "/sandbox/md_to_html_usage/test.html" ) html
 

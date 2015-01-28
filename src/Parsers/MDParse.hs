@@ -132,11 +132,3 @@ doc = do
   --h <- header
   ls <- some (blank <|> header <|> paragraph <|> unorderdList)
   return $ ls
-
-test_md_file :: String 
-test_md_file = 
-  concat ["# The Beatles\n",
-          "Yellow **Submarine**\n",
-          "Strawberry Fields *Forever*\n",
-          "* song 1\n",
-          "* song 2\n"]
