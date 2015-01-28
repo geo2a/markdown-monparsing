@@ -6,22 +6,26 @@ import MDParse
 serialize :: Document -> String
 serialize = concatMap genBlock
 
--- Не очень понятно, в какой момент добавлять \n
-
 genBlock :: Block -> String
 genBlock Blank = "\n"
 genBlock (Header h) = 
   "<h" ++ s ++ ">" ++ genLine (snd h) ++ "</h" ++ s ++ ">" ++ "\n"
-  where s = show (fst h)
+    where s = show (fst h)
 genBlock (Paragraph p) = 
-  "<p>" ++ concatMap genLine p ++ "</p>" ++ "\n" 
+  "<p>" ++ concatMap genLine p ++ "</p>" ++ "\n"
+genBlock (UnorderedList l) = 
+  "<ul>" ++ concatMap ((++ "\n") . genOrderedListItem) l ++ "</ul>" ++ "\n"
 
 genLine :: Line -> String
 genLine Empty        = ""
-genLine (NonEmpty []) = genLine Empty
-genLine (NonEmpty (l:ls)) = genInline l ++ " " ++  genLine (NonEmpty ls)   
+genLine (NonEmpty []) = genLine Empty ++ "\n"
+genLine (NonEmpty l) = concatMap ((++ " ") . genInline) l    
+
+genOrderedListItem :: ListItem -> String
+genOrderedListItem l = "<li>" ++ genLine l ++ "</li>" 
 
 genInline :: Inline -> String
 genInline (Plain s) = s
 genInline (Bold s) = "<strong>" ++ s ++ "</strong>"
 genInline (Italic s) = "<em>" ++ s ++ "</em>"
+

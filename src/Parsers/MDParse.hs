@@ -21,12 +21,14 @@ type Document = [Block]
 data Block = Blank
            | Header (Int,Line)
            | Paragraph [Line]
-           | UnorderedList [Line]
+           | UnorderedList [ListItem]
   deriving (Show,Eq)
 
 -- |Represents line as list of inline elements (words)
 data Line = Empty | NonEmpty [Inline]
   deriving (Show,Eq)
+
+type ListItem = Line
 
 -- |Represent inline entity, just a string for this moment  
 -- Что делать с пунктуацией и пробелами? 
@@ -110,9 +112,9 @@ unorderdList :: TM.TextualMonoid t => Parser t Block
 unorderdList = do
   items <- some (token bullet >> line)
   return . UnorderedList $ items 
-  --where
-bullet :: TM.TextualMonoid t => Parser t Char
-bullet = char '*' <|> char '+' <|> char '-' >>= return
+  where
+    bullet :: TM.TextualMonoid t => Parser t Char
+    bullet = char '*' <|> char '+' <|> char '-' >>= return
 
 -- TODO: Эта функция делает почти тоже самое, что и emptyLine, 
 -- TODO непонятно, как совместить их в одну, или, по крайней мере, 
