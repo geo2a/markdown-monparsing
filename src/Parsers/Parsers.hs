@@ -3,30 +3,62 @@ module Parsers where
 import Prelude hiding (splitAt)
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Reader
 import Control.Monad.State
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
 import Data.Char
 
-type Parser t a = StateT t [] a
+type Pos = (Int, Int)
+
+-- | Describes parsing state: inout string and current position
+type PState t = (Pos, t)
+
+type Parser t a = ReaderT Pos (StateT (PState t) []) a
 
 -- | TODO: Проблема с семантикой MonadPlus/Alternative
 --   По умолчанию, mplus для списка реализуется как ++, видимо
 --   Нужно перегружить инстанс для MonadPlus. Использовать newtype?
 
-parse :: TM.TextualMonoid t => Parser t p -> t -> [(p,t)]
-parse = runStateT 
-
--- |Consumes one symbol of any kind 
+parse :: TM.TextualMonoid t => Pos -> Parser t p -> t -> [(p,(PState t))]
+parse defpos p s = runStateT (runReaderT p defpos) (defpos,s)
+-- | Consumes one symbol of any kind 
+--   item parser now fails if the position of the character to be consumed
+--   is not onside with respect to current definition position
+--   A position is onside if its column number is strictly greater than the current defi-
+--   nition column. However, the first character of a new definition begins in the same
+--   column as the definition column, so this is handled as a special case
+-- TODO: Продумать, как правильно отслеживать отступы и заложить это в парсере item
 -- TODO: Попробовать упросить, длинновато получилось
 item :: TM.TextualMonoid t => Parser t Char
 item = do
-  s <- TM.splitCharacterPrefix `fmap` get
-  guard $ isJust s 
+  defpos <- ask -- asking for initial position of current definition 
+  (pos, input) <- get -- geting current input stream state
+  let s = TM.splitCharacterPrefix input -- trying to split input ((x:xs) analog)  
+  guard $ onside pos defpos && isJust s
   let (c,rest) = fromJust s
-  put rest
+  put (updatePos pos c,rest) 
   return c
+    where
+      onside :: Pos -> Pos -> Bool
+      onside (l,c) (dl,dc) = (c >= dc) || (l == dl)
+
+      updatePos :: Pos -> Char -> Pos
+      updatePos (line, col) c =
+        case c of 
+          '\n' -> (line + 1,0)
+          '\t' -> (line,((col `div` 8)+1)*8)
+          _    -> (line,col + 1)  
+
+-- | Old version -- without offside rule handling
+--item :: TM.TextualMonoid t => Parser t Char
+--item = do
+--  s <- TM.splitCharacterPrefix `fmap` get
+--  guard $ isJust s 
+--  let (c,rest) = fromJust s
+--  put rest
+--  return c
 
 -- |Consumes item only if it satisfies predicate
 sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
