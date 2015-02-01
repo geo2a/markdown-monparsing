@@ -21,8 +21,9 @@ type Parser t a = ReaderT Pos (StateT (PState t) []) a
 --   По умолчанию, mplus для списка реализуется как ++, видимо
 --   Нужно перегружить инстанс для MonadPlus. Использовать newtype?
 
-parse :: TM.TextualMonoid t => Pos -> Parser t p -> t -> [(p,(PState t))]
-parse defpos p s = runStateT (runReaderT p defpos) (defpos,s)
+parse :: TM.TextualMonoid t => Parser t p -> t -> [(p,(PState t))]
+parse p s = runStateT (runReaderT p defpos) (defpos,s)
+  where defpos = (0,0)
 -- | Consumes one symbol of any kind 
 --   item parser now fails if the position of the character to be consumed
 --   is not onside with respect to current definition position
@@ -42,7 +43,7 @@ item = do
   return c
     where
       onside :: Pos -> Pos -> Bool
-      onside (l,c) (dl,dc) = (c >= dc) || (l == dl)
+      onside (l,c) (defl,defc) = (c >= defc) || (l == defl)
 
       updatePos :: Pos -> Char -> Pos
       updatePos (line, col) c =
@@ -50,6 +51,31 @@ item = do
           '\n' -> (line + 1,0)
           '\t' -> (line,((col `div` 8)+1)*8)
           _    -> (line,col + 1)  
+
+-- One aspect of the offside rule still remains to be addressed: for the purposes
+-- of this rule, white-space and comments are not significant, and should always be
+-- successfully consumed even if they contain characters that are not onside. This can
+-- be handled by temporarily setting the definition position to (0, −1) within the junk
+-- parser for white-space and comments
+junk :: TM.TextualMonoid t => Parser t ()
+junk = local (\_ -> (0,-1)) spaces
+
+
+-- Попробуем написать комбинатор, который готовит 
+-- парсер для разбора нового блока 
+off :: TM.TextualMonoid t => Parser t a -> Parser t a
+off p = do
+  (defl,defc) <- ask -- ask for current definition (kind of initial) position
+  ((l,c),_)   <- get -- get current position
+  guard $ c > defc
+  local (\_ -> (l,c)) p
+
+offside_test :: TM.TextualMonoid t => Parser t ()
+offside_test = do
+  digit
+  newline
+  many digit 
+  newline
 
 -- | Old version -- without offside rule handling
 --item :: TM.TextualMonoid t => Parser t Char
@@ -93,8 +119,8 @@ letter = lower <|> upper
 alphanum :: TM.TextualMonoid t => Parser t Char
 alphanum = letter <|> digit
 
-newline :: TM.TextualMonoid t => Parser t Char
-newline  = char '\n'  
+newline :: TM.TextualMonoid t => Parser t ()
+newline  = char '\n' >> return () 
 ------------------Парсеры для групп символов----------------
 
 -- |Parse a specified string
@@ -126,8 +152,8 @@ bracket open p close = do
   return x
 
 ------------------"Lexical issues"----------------
-spaces :: TM.TextualMonoid t => Parser t String
-spaces = many (sat isSpace)
+spaces :: TM.TextualMonoid t => Parser t ()
+spaces = many (sat isSpace) >> return ()
 
 ------------------Repetitions with seporators---------------- 
 sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
