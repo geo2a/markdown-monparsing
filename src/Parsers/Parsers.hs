@@ -12,14 +12,24 @@ import Data.Char
 
 type Pos = (Int, Int)
 
+type Position = (Int, Int)
+
 -- | Describes parsing state: inout string and current position
 type PState t = (Pos, t)
 
-type Parser t a = ReaderT Pos (StateT (PState t) (Either String)) a
+data TM.TextualMonoid t => 
+  ParserState t = ParserState { input  :: t
+                              , position :: Position
+                              }
 
-parse :: TM.TextualMonoid t => Parser t p -> t -> Either String (p,(PState t))
-parse p s = runStateT (runReaderT p defpos) (defpos,s)
-  where defpos = (0,0)
+type Parser t a = ReaderT Pos (StateT (ParserState t) (Either String)) a
+
+parse :: TM.TextualMonoid t => 
+  Parser t p -> t -> Either String (p,(ParserState t))
+parse p s = 
+  runStateT (runReaderT p initPos) 
+            (ParserState {input = s, position = initPos})
+    where initPos = (1,1)
 -- | Consumes one symbol of any kind 
 --   item parser now fails if the position of the character to be consumed
 --   is not onside with respect to current definition position
@@ -31,11 +41,12 @@ parse p s = runStateT (runReaderT p defpos) (defpos,s)
 item :: TM.TextualMonoid t => Parser t Char
 item = do
   defpos <- ask -- asking for initial position of current definition 
-  (pos, input) <- get -- geting current input stream state
-  let s = TM.splitCharacterPrefix input -- trying to split input ((x:xs) analog)  
-  guard $ onside pos defpos && isJust s
+  state  <- get -- geting current parser state
+  -- trying to split input ((x:xs) analog)
+  let s = TM.splitCharacterPrefix . input $ state
+  guard $ onside (position state) defpos && isJust s
   let (c,rest) = fromJust s
-  put (updatePos pos c,rest) 
+  put (ParserState {position = updatePos (position state) c, input = rest})
   return c
     where
       onside :: Pos -> Pos -> Bool
@@ -44,7 +55,7 @@ item = do
       updatePos :: Pos -> Char -> Pos
       updatePos (line, col) c =
         case c of 
-          '\n' -> (line + 1,0)
+          '\n' -> (line + 1,1)
           '\t' -> (line,((col `div` 8)+1)*8)
           _    -> (line,col + 1)  
 
@@ -82,81 +93,81 @@ item = do
 ----  put rest
 ----  return c
 
--- |Consumes item only if it satisfies predicate
-sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
-sat p = do
-  x <- item 
-  guard $ p x
-  return x
+---- |Consumes item only if it satisfies predicate
+--sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
+--sat p = do
+--  x <- item 
+--  guard $ p x
+--  return x
 
-------------------Парсеры для одиночных символов----------------
+--------------------Парсеры для одиночных символов----------------
 
--- |Consumes item only if it is equal to specified char
-char :: TM.TextualMonoid t => Char -> Parser t Char
-char x = sat (\y -> x == y)
+---- |Consumes item only if it is equal to specified char
+--char :: TM.TextualMonoid t => Char -> Parser t Char
+--char x = sat (\y -> x == y)
 
----- |Decimal digit
-digit :: TM.TextualMonoid t => Parser t Char
-digit = sat isDigit
+------ |Decimal digit
+--digit :: TM.TextualMonoid t => Parser t Char
+--digit = sat isDigit
 
--- |Lowercase letter
-lower :: TM.TextualMonoid t => Parser t Char
-lower = sat isLower
+---- |Lowercase letter
+--lower :: TM.TextualMonoid t => Parser t Char
+--lower = sat isLower
 
--- |Uppercase letter
-upper :: TM.TextualMonoid t => Parser t Char
-upper = sat isUpper
+---- |Uppercase letter
+--upper :: TM.TextualMonoid t => Parser t Char
+--upper = sat isUpper
 
--- |Anycase letter
-letter :: TM.TextualMonoid t => Parser t Char
-letter = lower <|> upper
+---- |Anycase letter
+--letter :: TM.TextualMonoid t => Parser t Char
+--letter = lower <|> upper
 
--- |Anycase letter or decimal digit
-alphanum :: TM.TextualMonoid t => Parser t Char
-alphanum = letter <|> digit
+---- |Anycase letter or decimal digit
+--alphanum :: TM.TextualMonoid t => Parser t Char
+--alphanum = letter <|> digit
 
-newline :: TM.TextualMonoid t => Parser t ()
-newline  = char '\n' >> return () 
-------------------Парсеры для групп символов----------------
+--newline :: TM.TextualMonoid t => Parser t ()
+--newline  = char '\n' >> return () 
+--------------------Парсеры для групп символов----------------
 
--- |Parse a specified string
-string :: TM.TextualMonoid t => String -> Parser t String
-string = mapM char
+---- |Parse a specified string
+--string :: TM.TextualMonoid t => String -> Parser t String
+--string = mapM char
 
--- |Word (non-empty string of letters)
-word :: TM.TextualMonoid t => Parser t String 
-word = some letter 
+---- |Word (non-empty string of letters)
+--word :: TM.TextualMonoid t => Parser t String 
+--word = some letter 
 
--- |Like word, but may contain digits
-alphanums :: TM.TextualMonoid t => Parser t String 
-alphanums = some alphanum
+---- |Like word, but may contain digits
+--alphanums :: TM.TextualMonoid t => Parser t String 
+--alphanums = some alphanum
 
--- |Parse a token with specific parser, throw away any trailing spaces
-token :: TM.TextualMonoid t => Parser t a -> Parser t a
-token p = spaces >> p
+---- |Parse a token with specific parser, throw away any trailing spaces
+--token :: TM.TextualMonoid t => Parser t a -> Parser t a
+--token p = spaces >> p
 
--- |Parse a symbolic token, just a specification of token parser
-symbol :: TM.TextualMonoid t => String -> Parser t String
-symbol cs = token (string cs)
+---- |Parse a symbolic token, just a specification of token parser
+--symbol :: TM.TextualMonoid t => String -> Parser t String
+--symbol cs = token (string cs)
 
--- |Parse a thing enclosed by brackets
-bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
-bracket open p close = do 
-  open
-  x <- p
-  close
-  return x
+---- |Parse a thing enclosed by brackets
+--bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
+--bracket open p close = do 
+--  open
+--  x <- p
+--  close
+--  return x
 
-------------------"Lexical issues"----------------
-spaces :: TM.TextualMonoid t => Parser t ()
-spaces = many (sat isSpace) >> return ()
+--------------------"Lexical issues"----------------
+--spaces :: TM.TextualMonoid t => Parser t ()
+--spaces = many (sat isSpace) >> return ()
 
-------------------Repetitions with seporators---------------- 
-sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
-p `sepby` sep = (p `sepby1` sep) <|> return []
+--------------------Repetitions with seporators---------------- 
+--sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
+--p `sepby` sep = (p `sepby1` sep) <|> return []
 
-sepby1 :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
-p `sepby1` sep = do 
-  a <- p
-  as <- many (sep >> p)
-  return (a:as)
+--sepby1 :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
+--p `sepby1` sep = do 
+--  a <- p
+--  as <- many (sep >> p)
+--  return (a:as)

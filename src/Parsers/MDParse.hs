@@ -83,10 +83,6 @@ nonEmptyLine = do
   char '\n'
   return . NonEmpty $ l
 
-line_test1 = 
-  (fst . head $ parse nonEmptyLine "acb   **abc**  _de_\n") == 
-    NonEmpty [Plain "acb",Bold "abc",Italic "de"]
-
 -----------------------------------------------------------------
 -------------------Parsers for Block elements--------------------
 -----------------------------------------------------------------
