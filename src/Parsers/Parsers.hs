@@ -15,9 +15,10 @@ type Position = (Int, Int)
 
 -- | Describes parsing state: inout string and current position
 data TM.TextualMonoid t => 
-  ParserState t = ParserState { input  :: t
-                              , position :: Position
+  ParserState t = ParserState { position :: Position
+                              , input  :: t
                               }
+  deriving (Show)
 
 type ParseError = String 
   
