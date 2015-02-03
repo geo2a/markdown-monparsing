@@ -5,7 +5,6 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Error
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
@@ -17,8 +16,11 @@ type Position = (Int, Int)
 data TM.TextualMonoid t => 
   ParserState t = ParserState { position :: Position
                               , input  :: t
-                              }
-  deriving (Show)
+                              } deriving (Eq)
+
+instance TM.TextualMonoid t => Show (ParserState t) where
+  show st = "{pos = " ++ (show $ position st) ++ 
+    ", input = \"" ++ (TM.foldr_ (:) (mempty) (input st)) ++ "\"}"
 
 type ParseError = String 
   
@@ -35,12 +37,7 @@ parse p s =
   runStateT (runReaderT p initPos) 
             (ParserState {input = s, position = initPos})
     where initPos = (1,1)
--- | Consumes one symbol of any kind 
---   item parser now fails if the position of the character to be consumed
---   is not onside with respect to current definition position
---   A position is onside if its column number is strictly greater than the current defi-
---   nition column. However, the first character of a new definition begins in the same
---   column as the definition column, so this is handled as a special case
+-- | Consumes one symbol of any kind
 -- TODO: Продумать, как правильно отслеживать отступы и заложить это в парсере item
 -- TODO: Попробовать упросить, длинновато получилось
 item :: TM.TextualMonoid t => Parser t Char
@@ -64,11 +61,7 @@ item = do
           '\t' -> (line,((col `div` 8)+1)*8)
           _    -> (line,col + 1)  
 
--- One aspect of the offside rule still remains to be addressed: for the purposes
--- of this rule, white-space and comments are not significant, and should always be
--- successfully consumed even if they contain characters that are not onside. This can
--- be handled by temporarily setting the definition position to (0, −1) within the junk
--- parser for white-space and comments
+-- Пропускатель пробелов
 junk :: TM.TextualMonoid t => Parser t ()
 junk = local (\_ -> (0,-1)) spaces
 

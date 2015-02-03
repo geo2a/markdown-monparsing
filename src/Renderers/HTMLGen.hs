@@ -33,8 +33,9 @@ genInline (Italic s) = "<em>" ++ s ++ "</em>"
 
 testMDtoHTML :: IO ()
 testMDtoHTML = do 
-  path <- getCurrentDirectory 
-  html <- (serialize . fst . head . parse doc) `fmap` 
-    readFile (path ++ "/sandbox/md_to_html_usage/test.md")
+  path <- getCurrentDirectory
+  let html = "analka" 
+  --html <- (serialize . parse doc) `fmap` 
+  --  readFile (path ++ "/sandbox/md_to_html_usage/test.md")
   writeFile (path ++ "/sandbox/md_to_html_usage/test.html" ) html
 
