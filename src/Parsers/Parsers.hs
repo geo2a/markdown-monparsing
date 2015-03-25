@@ -3,6 +3,7 @@ module Parsers where
 import Prelude hiding (splitAt)
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
@@ -25,151 +26,172 @@ instance TM.TextualMonoid t => Show (ParserState t) where
 
 type ParseError = String 
   
-type Parser t a = 
-  ReaderT Position (StateT (ParserState t) (Either ParseError)) a
+--type Parser t a = 
+--  Either ParseError (ReaderT Position (StateT (ParserState t) a) ())
 
---bad :: TM.TextualMonoid t =>
---  ParserState t -> String -> Either ParseError (a,ParserState t) 
---bad state msg = Left ((show $ position state) ++ " " ++ msg)
+--type ParserH a = ReaderT Position (StateT String a)
 
-parse :: TM.TextualMonoid t => 
-  Parser t a -> t -> Either ParseError (a,ParserState t)
-parse p s = 
-  runStateT (runReaderT p initPos) 
-            (ParserState {input = s, position = initPos})
-    where initPos = (1,1)
+--type Parser t = ReaderT Position (StateT (ExceptT ParseError (ParserState t))) 
+
+--type Parser t a = StateT (Either ParseError (ParserState t)) a 
+
+type Parser a = StateT String (Either (ParseError,String)) a
+
+--type Parser a = ExceptT ParseError (State String) a
+
+--parse :: Parser a -> String -> (Either ParseError a, String)
+parse :: Parser a -> String -> Either (ParseError,String) (a,String)
+parse p inp = runStateT p inp 
+
+item :: Parser Char
+item = do
+  s <- get
+  case s of 
+    []     -> put "" >> throwError ("empty input string","")
+    (x:xs) -> put xs >> return x 
+
+sat :: (Char -> Bool) -> Parser Char
+sat p = do
+  x <- item 
+  if p x then return x else get >>= \s -> throwError ("not a letter",s)
+
+--parse :: TM.TextualMonoid t => 
+--  Parser t a -> t -> Either ParseError a
+--parse p s = 
+--   runStateT p (ParserState {input = s, position = initPos})
+--    where initPos = (1,1)
 -- | Consumes one symbol of any kind
 -- TODO: Продумать, как правильно отслеживать отступы и заложить это в парсере item
 -- TODO: Попробовать упросить, длинновато получилось
-item :: TM.TextualMonoid t => Parser t Char
-item = do
-  defpos <- ask -- asking for initial position of current definition 
-  state  <- get -- geting current parser state
-  -- trying to split input ((x:xs) analog)
-  let s = TM.splitCharacterPrefix . input $ state
-  guard $ onside (position state) defpos && isJust s
-  let (c,rest) = fromJust s
-  put (ParserState {position = updatePos (position state) c, input = rest})
-  return c
-    where
-      onside :: Position -> Position -> Bool
-      onside (l,c) (defl,defc) = (c >= defc) || (l == defl)
-
-      updatePos :: Position -> Char -> Position
-      updatePos (line, col) c =
-        case c of 
-          '\n' -> (line + 1,1)
-          '\t' -> (line,((col `div` 8)+1)*8)
-          _    -> (line,col + 1)  
-
--- Пропускатель пробелов
-junk :: TM.TextualMonoid t => Parser t ()
-junk = local (\_ -> (0,-1)) spaces
-
-
--- Попробуем написать комбинатор, который готовит 
--- парсер для разбора нового блока 
---off :: TM.TextualMonoid t => Parser t a -> Parser t a
---off p = do
---  (defl,defc) <- ask -- ask for current definition (kind of initial) position
---  ((l,c),_)   <- get -- get current position
---  guard $ c > defc
---  local (\_ -> (l,c)) p
-
---offside_test :: TM.TextualMonoid t => Parser t ()
---offside_test = do
---  digit
---  newline
---  many digit 
---  newline
-
--- | Old version -- without offside rule handling
 --item :: TM.TextualMonoid t => Parser t Char
 --item = do
---  s <- TM.splitCharacterPrefix `fmap` get
---  guard $ isJust s 
+--  defpos <- ask -- asking for initial position of current definition 
+--  state  <- get -- geting current parser state
+--  -- trying to split input ((x:xs) analog)
+--  let s = TM.splitCharacterPrefix . input $ state
+--  guard $ onside (position state) defpos && isJust s
 --  let (c,rest) = fromJust s
---  put rest
+--  put (ParserState {position = updatePos (position state) c, input = rest})
 --  return c
+--    where
+--      onside :: Position -> Position -> Bool
+--      onside (l,c) (defl,defc) = (c >= defc) || (l == defl)
 
-guard'           :: (MonadPlus m) => Bool -> m ()
-guard' True      =  return ()
-guard' False     =  mzero
+--      updatePos :: Position -> Char -> Position
+--      updatePos (line, col) c =
+--        case c of 
+--          '\n' -> (line + 1,1)
+--          '\t' -> (line,((col `div` 8)+1)*8)
+--          _    -> (line,col + 1)  
 
--- |Consumes item only if it satisfies predicate
-sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
-sat p = do
-  x <- item 
-  if p x then return x else throwError "lalki"
+---- Пропускатель пробелов
+--junk :: TM.TextualMonoid t => Parser t ()
+--junk = local (\_ -> (0,-1)) spaces
 
-------------------Парсеры для одиночных символов----------------
 
--- |Consumes item only if it is equal to specified char
-char :: TM.TextualMonoid t => Char -> Parser t Char
-char x = sat (\y -> x == y)
+---- Попробуем написать комбинатор, который готовит 
+---- парсер для разбора нового блока 
+----off :: TM.TextualMonoid t => Parser t a -> Parser t a
+----off p = do
+----  (defl,defc) <- ask -- ask for current definition (kind of initial) position
+----  ((l,c),_)   <- get -- get current position
+----  guard $ c > defc
+----  local (\_ -> (l,c)) p
 
----- |Decimal digit
-digit :: TM.TextualMonoid t => Parser t Char
-digit = sat isDigit
+----offside_test :: TM.TextualMonoid t => Parser t ()
+----offside_test = do
+----  digit
+----  newline
+----  many digit 
+----  newline
 
--- |Lowercase letter
-lower :: TM.TextualMonoid t => Parser t Char
-lower = sat isLower
+---- | Old version -- without offside rule handling
+----item :: TM.TextualMonoid t => Parser t Char
+----item = do
+----  s <- TM.splitCharacterPrefix `fmap` get
+----  guard $ isJust s 
+----  let (c,rest) = fromJust s
+----  put rest
+----  return c
 
--- |Uppercase letter
-upper :: TM.TextualMonoid t => Parser t Char
-upper = sat isUpper
+--guard'           :: (MonadPlus m) => Bool -> m ()
+--guard' True      =  return ()
+--guard' False     =  mzero
 
--- |Anycase letter
-letter :: TM.TextualMonoid t => Parser t Char
-letter = lower <|> upper
+---- |Consumes item only if it satisfies predicate
+--sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
+--sat p = do
+--  x <- item 
+--  if p x then return x else throwError "lalki"
 
--- |Anycase letter or decimal digit
-alphanum :: TM.TextualMonoid t => Parser t Char
-alphanum = letter <|> digit
+--------------------Парсеры для одиночных символов----------------
 
-newline :: TM.TextualMonoid t => Parser t ()
-newline  = char '\n' >> return () 
-------------------Парсеры для групп символов----------------
+---- |Consumes item only if it is equal to specified char
+--char :: TM.TextualMonoid t => Char -> Parser t Char
+--char x = sat (\y -> x == y)
 
--- |Parse a specified string
-string :: TM.TextualMonoid t => String -> Parser t String
-string = mapM char
+------ |Decimal digit
+--digit :: TM.TextualMonoid t => Parser t Char
+--digit = sat isDigit
 
--- |Word (non-empty string of letters)
-word :: TM.TextualMonoid t => Parser t String 
-word = some letter 
+---- |Lowercase letter
+--lower :: TM.TextualMonoid t => Parser t Char
+--lower = sat isLower
 
--- |Like word, but may contain digits
-alphanums :: TM.TextualMonoid t => Parser t String 
-alphanums = some alphanum
+---- |Uppercase letter
+--upper :: TM.TextualMonoid t => Parser t Char
+--upper = sat isUpper
 
--- |Parse a token with specific parser, throw away any trailing spaces
-token :: TM.TextualMonoid t => Parser t a -> Parser t a
-token p = spaces >> p
+---- |Anycase letter
+--letter :: TM.TextualMonoid t => Parser t Char
+--letter = lower <|> upper
 
--- |Parse a symbolic token, just a specification of token parser
-symbol :: TM.TextualMonoid t => String -> Parser t String
-symbol cs = token (string cs)
+---- |Anycase letter or decimal digit
+--alphanum :: TM.TextualMonoid t => Parser t Char
+--alphanum = letter <|> digit
 
--- |Parse a thing enclosed by brackets
-bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
-bracket open p close = do 
-  open
-  x <- p
-  close
-  return x
+--newline :: TM.TextualMonoid t => Parser t ()
+--newline  = char '\n' >> return () 
+--------------------Парсеры для групп символов----------------
 
-------------------"Lexical issues"----------------
-spaces :: TM.TextualMonoid t => Parser t ()
-spaces = many (sat isSpace) >> return ()
+---- |Parse a specified string
+--string :: TM.TextualMonoid t => String -> Parser t String
+--string = mapM char
 
-------------------Repetitions with seporators---------------- 
-sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
-p `sepby` sep = (p `sepby1` sep) <|> return []
+---- |Word (non-empty string of letters)
+--word :: TM.TextualMonoid t => Parser t String 
+--word = some letter 
 
-sepby1 :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
-p `sepby1` sep = do 
-  a <- p
-  as <- many (sep >> p)
-  return (a:as)
+---- |Like word, but may contain digits
+--alphanums :: TM.TextualMonoid t => Parser t String 
+--alphanums = some alphanum
+
+---- |Parse a token with specific parser, throw away any trailing spaces
+--token :: TM.TextualMonoid t => Parser t a -> Parser t a
+--token p = spaces >> p
+
+---- |Parse a symbolic token, just a specification of token parser
+--symbol :: TM.TextualMonoid t => String -> Parser t String
+--symbol cs = token (string cs)
+
+---- |Parse a thing enclosed by brackets
+--bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
+--bracket open p close = do 
+--  open
+--  x <- p
+--  close
+--  return x
+
+--------------------"Lexical issues"----------------
+--spaces :: TM.TextualMonoid t => Parser t ()
+--spaces = many (sat isSpace) >> return ()
+
+--------------------Repetitions with seporators---------------- 
+--sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
+--p `sepby` sep = (p `sepby1` sep) <|> return []
+
+--sepby1 :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
+--p `sepby1` sep = do 
+--  a <- p
+--  as <- many (sep >> p)
+--  return (a:as)
