@@ -9,7 +9,8 @@ import Control.Monad
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Except
+import Control.Monad.Error
+--import Control.Monad.Except
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
@@ -20,14 +21,14 @@ type Position = (Int, Int)
 -- | Describes parsing state: inout string and current position
 data TM.TextualMonoid t => 
   ParserState t = ParserState { position :: Position
-                              , input  :: t
+                              , remainder  :: t
                               } deriving (Eq)
 
 instance TM.TextualMonoid t => Show (ParserState t) where
   show st = "{pos = " ++ (show $ position st) ++ 
-    ", input = \"" ++ (TM.foldr_ (:) (mempty) (input st)) ++ "\"}"
+    ", remainder = \"" ++ (TM.foldr_ (:) (mempty) (remainder st)) ++ "\"}"
 
-data ParseError = Undefined | EmptyInput | UnsatisfiedPredicate String
+data ParseError = Undefined String | Emptyremainder String | UnsatisfiedPredicate String
   deriving (Show, Eq)
   
 type ErrorReport t = (ParseError, (ParserState t))
@@ -37,19 +38,20 @@ newtype Parser t a = Parser (
   ) deriving (Functor, Applicative, Monad,
               MonadState (ParserState t)
               , MonadError (ErrorReport t)
+              --, MonadPlus
               )
 
 parse :: TM.TextualMonoid t => 
   Parser t a -> t -> Either (ErrorReport t) (a,ParserState t)
 parse (Parser p) s = 
-  runStateT p (ParserState {input = s, position = initPos})
+  runStateT p (ParserState {remainder = s, position = initPos})
     where initPos = (1,1)
 
 reportError :: TM.TextualMonoid t => 
   Either (ErrorReport t) (a,ParserState t) -> String
 reportError (Right _) = "Parsed successfully"
-
-
+reportError (Left (err, ParserState pos inp)) = 
+  "Parse error occured at " ++ show pos ++ ": "++ show err
 
 -- | Consumes one symbol of any kind
 -- TODO: Продумать, как правильно отслеживать отступы и заложить это в парсере item
@@ -57,13 +59,13 @@ reportError (Right _) = "Parsed successfully"
 item :: TM.TextualMonoid t => Parser t Char
 item = do
   state  <- get
-  -- trying to split input ((x:xs) analog)
-  let s = TM.splitCharacterPrefix . input $ state
+  -- trying to split remainder ((x:xs) analog)
+  let s = TM.splitCharacterPrefix . remainder $ state
   case s of 
-    Nothing -> throwError (EmptyInput,state)
+    Nothing -> throwError (Emptyremainder "item",state)
     Just (c,rest) -> do  
       let (c,rest) = fromJust s
-      put (ParserState {position = updatePos (position state) c, input = rest})
+      put (ParserState {position = updatePos (position state) c, remainder = rest})
       return c
     where
       updatePos :: Position -> Char -> Position
