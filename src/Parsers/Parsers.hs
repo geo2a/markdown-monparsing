@@ -5,6 +5,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Except
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
@@ -27,9 +28,9 @@ type ParseError = String
 type Parser t a = 
   ReaderT Position (StateT (ParserState t) (Either ParseError)) a
 
-bad :: TM.TextualMonoid t =>
-  ParserState t -> String -> Either ParseError (a,ParserState t) 
-bad state msg = Left ((show $ position state) ++ " " ++ msg)
+--bad :: TM.TextualMonoid t =>
+--  ParserState t -> String -> Either ParseError (a,ParserState t) 
+--bad state msg = Left ((show $ position state) ++ " " ++ msg)
 
 parse :: TM.TextualMonoid t => 
   Parser t a -> t -> Either ParseError (a,ParserState t)
@@ -91,12 +92,15 @@ junk = local (\_ -> (0,-1)) spaces
 --  put rest
 --  return c
 
+guard'           :: (MonadPlus m) => Bool -> m ()
+guard' True      =  return ()
+guard' False     =  mzero
+
 -- |Consumes item only if it satisfies predicate
 sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
 sat p = do
   x <- item 
-  guard $ p x
-  return x
+  if p x then return x else throwError "lalki"
 
 ------------------Парсеры для одиночных символов----------------
 
