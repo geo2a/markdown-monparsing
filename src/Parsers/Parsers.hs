@@ -1,5 +1,6 @@
 
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving
+             , FlexibleInstances #-}
 
 module Parsers where
 
@@ -10,7 +11,7 @@ import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Error
---import Control.Monad.Except
+import Control.Monad.Except
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
@@ -24,6 +25,9 @@ data TM.TextualMonoid t =>
                               , remainder  :: t
                               } deriving (Eq)
 
+brokenState :: TM.TextualMonoid t => ParserState t
+brokenState = ParserState (-1,-1) mempty
+
 instance TM.TextualMonoid t => Show (ParserState t) where
   show st = "{pos = " ++ (show $ position st) ++ 
     ", remainder = \"" ++ (TM.foldr_ (:) (mempty) (remainder st)) ++ "\"}"
@@ -33,12 +37,17 @@ data ParseError = Undefined String | Emptyremainder String | UnsatisfiedPredicat
   
 type ErrorReport t = (ParseError, (ParserState t))
 
+instance TM.TextualMonoid t => Error (ErrorReport t) where
+  noMsg    = (Undefined "", brokenState)
+  strMsg s = (Undefined s, brokenState)
+
 newtype Parser t a = Parser (  
     StateT (ParserState t) (Either (ErrorReport t)) a
   ) deriving (Functor, Applicative, Monad,
               MonadState (ParserState t)
               , MonadError (ErrorReport t)
-              --, MonadPlus
+              , MonadPlus
+              , Alternative
               )
 
 parse :: TM.TextualMonoid t => 
@@ -84,7 +93,7 @@ sat p = do
 
 --------------------Парсеры для одиночных символов----------------
 
--- |Helper function, overrides error that may occuer in parser p 
+-- |Helper function, overrides error that may occur in parser p 
 -- |with custom message 
 overrideError :: Parser t a -> ParseError -> Parser t a
 overrideError p err = do
@@ -142,40 +151,40 @@ string s = do
   (mapM char s) `overrideError` 
     (UnsatisfiedPredicate ("string " ++ s))
 
----- |Word (non-empty string of letters)
---word :: TM.TextualMonoid t => Parser t String 
---word = some letter 
+-- |Word (non-empty string of letters)
+word :: TM.TextualMonoid t => Parser t String 
+word = some letter 
 
----- |Like word, but may contain digits
---alphanums :: TM.TextualMonoid t => Parser t String 
---alphanums = some alphanum
+-- |Like word, but may contain digits
+alphanums :: TM.TextualMonoid t => Parser t String 
+alphanums = some alphanum
 
----- |Parse a token with specific parser, throw away any trailing spaces
---token :: TM.TextualMonoid t => Parser t a -> Parser t a
---token p = spaces >> p
+-- |Parse a token with specific parser, throw away any trailing spaces
+token :: TM.TextualMonoid t => Parser t a -> Parser t a
+token p = spaces >> p
 
----- |Parse a symbolic token, just a specification of token parser
---symbol :: TM.TextualMonoid t => String -> Parser t String
---symbol cs = token (string cs)
+-- |Parse a symbolic token, just a specification of token parser
+symbol :: TM.TextualMonoid t => String -> Parser t String
+symbol cs = token (string cs)
 
----- |Parse a thing enclosed by brackets
---bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
---bracket open p close = do 
---  open
---  x <- p
---  close
---  return x
+-- |Parse a thing enclosed by brackets
+bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
+bracket open p close = do 
+  open
+  x <- p
+  close
+  return x
 
 --------------------"Lexical issues"----------------
---spaces :: TM.TextualMonoid t => Parser t ()
---spaces = many (sat isSpace) >> return ()
+spaces :: TM.TextualMonoid t => Parser t ()
+spaces = many (sat isSpace) >> return ()
 
 --------------------Repetitions with seporators---------------- 
---sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
---p `sepby` sep = (p `sepby1` sep) <|> return []
+sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
+p `sepby` sep = (p `sepby1` sep) <|> return []
 
---sepby1 :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
---p `sepby1` sep = do 
---  a <- p
---  as <- many (sep >> p)
---  return (a:as)
+sepby1 :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
+p `sepby1` sep = do 
+  a <- p
+  as <- many (sep >> p)
+  return (a:as)
