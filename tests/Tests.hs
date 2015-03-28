@@ -48,56 +48,62 @@ testSat = [
 ----------------Test for parsers for groups of chars---------------
 -------------------------------------------------------------------
 
---manysTests = testGroup "Tests for multy character parsers" $ 
---  [wordTestGroup, tokenTestGroup, bracketTestGroup]
+manysTests = testGroup "Tests for multy character parsers" $ 
+  [wordTestGroup, tokenTestGroup, bracketTestGroup]
 
----- |Tests for parser word (parses non-empty string of letters)
---wordTestGroup = testGroup "Test cases for parser word" $ testWord 
+-- |Tests for parser word (parses non-empty string of letters)
+wordTestGroup = testGroup "Test cases for parser word" $ testWord 
 
---testWord = [
---  testCase "Parse until meeting with a space" $ 
---    parse word "ab ba" @?= Right ("ab",ParserState {position = (1,3), 
---                                                    input = " ba"}),
---  testCase "Fails on empty input" $
---    parse word "" @?= Left ""
---  ]
+testWord = [
+  testCase "Parse until meeting with a space" $ 
+    parse word "ab ba" @?= Right ("ab",ParserState {position = (1,3), 
+                                                    remainder = " ba"}),
+  testCase "Fails on empty input" $
+    parse word "" @?= Left (EmptyRemainder "item",ParserState {position = (1,1), remainder = ""})
+  ]
 
----- |Tests for parser token (skip space-symbols and parse with parser p)
---tokenTestGroup = testGroup "Test cases for parser token" $ testToken 
+-- |Tests for parser token (skip space-symbols and parse with parser p)
+tokenTestGroup = testGroup "Test cases for parser token" $ testToken 
 
---testToken = [
---  testCase "If prefix spaces isn't presented -- just applies the parser" $
---    parse (token (string "hibro!")) "hibro!" @?= 
---      Right ("hibro!",ParserState {position = (1,7), input = ""}), 
---  testCase "Skips prefix spaces and parses string" $ 
---    parse (token (string "hibro!")) " \n  \t hibro!" @?= 
---      Right ("hibro!",ParserState {position = (2,15), input = ""}),
---  testCase "If internal parser fails -- so fails token" $
---    parse (token (string "hibro!")) "Hi, Bro!" @?= Left "",
---  testCase "Fails on empty input" $
---    parse (token (string "hibro!")) "" @?= Left ""  
---  ]
+testToken = [
+  testCase "If prefix spaces isn't presented -- just applies the parser" $
+    parse (token (string "hibro!")) "hibro!" @?= 
+      Right ("hibro!",ParserState {position = (1,7), remainder = ""}), 
+  testCase "Skips prefix spaces and parses string" $ 
+    parse (token (string "hibro!")) " \n  \t hibro!" @?= 
+      Right ("hibro!",ParserState {position = (2,15), remainder = ""}),
+  testCase "If internal parser fails -- so fails token" $
+    parse (token (string "hibro!")) "Hi, Bro!" @?= 
+      Left (UnsatisfiedPredicate "string hibro!", 
+            ParserState{position = (1,1), remainder = "Hi, Bro!"}),
+  testCase "Fails on empty input" $
+    parse (token (string "hibro!")) "" @?= 
+      Left (EmptyRemainder "item",ParserState {position = (1,1), remainder = ""})
+  ]
 
----- |Tests for parser bracket (parses a thing enclosed by brackets)
---bracketTestGroup = testGroup "Test cases for parser bracket" $ testBracket 
+-- |Tests for parser bracket (parses a thing enclosed by brackets)
+bracketTestGroup = testGroup "Test cases for parser bracket" $ testBracket 
 
---testBracket = [
---  testCase "Parses string in simple char brackets" $ 
---    parse (bracket (char '(') (string "1 + 1") (char ')')) "(1 + 1)" @?=
---      Right ("1 + 1",ParserState {position = (1,8), input = ""}),
---  testCase "Fails if first bracket parser does" $ 
---    parse (bracket (char '(') (string "1 + 1") (char ')')) "[1 + 1)" @?= 
---      Left "",
---  testCase "Fails if second bracket parser does" $ 
---    parse (bracket (char '(') (string "1 + 1") (char ')')) "(1 + 1]" @?= 
---      Left "",
---  testCase "Fails if internal parser does" $ 
---    parse (bracket (char '(') (string "1 + 1") (char ')')) "(1+1)"   @?= 
---      Left "",
---  testCase "Fails on empty input" $ 
---    parse (bracket (char '(') (string "1 + 1") (char ')')) "" @?= 
---      Left ""
---  ]
+testBracket = [
+  testCase "Parses string in simple char brackets" $ 
+    parse (bracket (char '(') (string "1 + 1") (char ')')) "(1 + 1)" @?=
+      Right ("1 + 1",ParserState {position = (1,8), remainder = ""}),
+  testCase "Fails if first bracket parser does" $ 
+    parse (bracket (char '(') (string "1 + 1") (char ')')) "[1 + 1)" @?= 
+      Left (BracketError "invalid opening bracket",
+            ParserState {position = (1,1), remainder = "[1 + 1)"}),
+  testCase "Fails if second bracket parser does" $ 
+    parse (bracket (char '(') (string "1 + 1") (char ')')) "(1 + 1]" @?= 
+      Left (BracketError "invalid closing bracket",
+            ParserState {position = (1,7), remainder = "]"}),
+  testCase "Fails if internal parser does" $ 
+    parse (bracket (char '(') (string "1 + 1") (char ')')) "(1+1)"   @?= 
+      Left (UnsatisfiedPredicate "string 1 + 1",
+            ParserState {position = (1,2), remainder = "1+1)"}),
+  testCase "Fails on empty input" $ 
+    parse (bracket (char '(') (string "1 + 1") (char ')')) "" @?= 
+      Left (EmptyRemainder "item",ParserState {position = (1,1), remainder = ""})
+  ]
 
 
 -----------------------------------------------------------------
@@ -107,7 +113,7 @@ testSat = [
 --buildTestList :: (Eq a, Show a) => [(a,a)] -> Test
 --buildTestList = testList . map (uncurry $ testAssertEqual "")
 
-unitTests = testGroup "Unit Tests" [singlesTests{-,manysTests-}]
+unitTests = testGroup "Unit Tests" [singlesTests,manysTests]
 
 tests :: TestTree
 tests = testGroup "Tests" [unitTests]
