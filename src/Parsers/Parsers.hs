@@ -32,7 +32,10 @@ instance TM.TextualMonoid t => Show (ParserState t) where
   show st = "{pos = " ++ (show $ position st) ++ 
     ", remainder = \"" ++ (TM.foldr_ (:) (mempty) (remainder st)) ++ "\"}"
 
-data ParseError = Undefined String | Emptyremainder String | UnsatisfiedPredicate String
+data ParseError = Undefined String 
+                | EmptyRemainder String 
+                | UnsatisfiedPredicate String
+                | BracketError String
   deriving (Show, Eq)
   
 type ErrorReport t = (ParseError, (ParserState t))
@@ -71,7 +74,7 @@ item = do
   -- trying to split remainder ((x:xs) analog)
   let s = TM.splitCharacterPrefix . remainder $ state
   case s of 
-    Nothing -> throwError (Emptyremainder "item",state)
+    Nothing -> throwError (EmptyRemainder "item",state)
     Just (c,rest) -> do  
       let (c,rest) = fromJust s
       put (ParserState {position = updatePos (position state) c, remainder = rest})
@@ -87,8 +90,9 @@ item = do
 -- |Consumes item only if it satisfies predicate
 sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
 sat p = do
-  x <- item 
-  if p x then return x else get >>= \state -> 
+  state <- get
+  x <- item `overrideError` (EmptyRemainder "sat")
+  if p x then return x else 
     throwError (UnsatisfiedPredicate "general",state)
 
 --------------------Парсеры для одиночных символов----------------
@@ -98,8 +102,15 @@ sat p = do
 overrideError :: Parser t a -> ParseError -> Parser t a
 overrideError p err = do
   state <- get
-  p `catchError` \_ -> 
-    throwError (err, state)
+  p `catchError` \(oldErr, oldState) ->
+    case oldErr of
+      EmptyRemainder s -> throwError (EmptyRemainder s, state)
+      _ -> throwError (err, state)
+  where
+    getMsg (Undefined s) = s
+    getMsg (EmptyRemainder s) = s
+    getMsg (UnsatisfiedPredicate s) = s
+    getMsg (BracketError s) = s
 
 ---- |Consumes item only if it is equal to specified char
 char :: TM.TextualMonoid t => Char -> Parser t Char
@@ -126,17 +137,19 @@ upper = sat isUpper `overrideError`
 letter :: TM.TextualMonoid t => Parser t Char
 letter = do
   state <- get
-  lower `catchError` \(UnsatisfiedPredicate _,_) -> 
-    upper `catchError` \(UnsatisfiedPredicate _,_) ->
-      throwError (UnsatisfiedPredicate "letter",state)
+  lower <|> upper
+  --lower `catchError` \(UnsatisfiedPredicate _,_) -> 
+  --  upper `catchError` \(UnsatisfiedPredicate _,_) ->
+  --    throwError (UnsatisfiedPredicate "letter",state)
 
 ---- |Anycase letter or decimal digit
 alphanum :: TM.TextualMonoid t => Parser t Char
 alphanum = do
   state <- get
-  letter `catchError` \(UnsatisfiedPredicate _,_) -> 
-    digit `catchError` \(UnsatisfiedPredicate _,_) -> 
-      throwError (UnsatisfiedPredicate "alphanum",state)
+  letter <|> digit
+  --letter `catchError` \(UnsatisfiedPredicate _,_) -> 
+  --  digit `catchError` \(UnsatisfiedPredicate _,_) -> 
+  --    throwError (UnsatisfiedPredicate "alphanum",state)
 
 newline :: TM.TextualMonoid t => Parser t ()
 newline  = char '\n' `overrideError` 
@@ -153,7 +166,7 @@ string s = do
 
 -- |Word (non-empty string of letters)
 word :: TM.TextualMonoid t => Parser t String 
-word = some letter 
+word = some letter
 
 -- |Like word, but may contain digits
 alphanums :: TM.TextualMonoid t => Parser t String 
@@ -170,9 +183,9 @@ symbol cs = token (string cs)
 -- |Parse a thing enclosed by brackets
 bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
 bracket open p close = do 
-  open
+  open `overrideError` (BracketError "invalid opening bracket") 
   x <- p
-  close
+  close `overrideError` (BracketError "invalid closing bracket")
   return x
 
 --------------------"Lexical issues"----------------
