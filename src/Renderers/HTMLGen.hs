@@ -5,7 +5,30 @@ import MDParse
 
 import System.Directory -- for demonstration 
 
-initDocument :: Document
+documentHeader :: String -> String
+documentHeader title = unlines [
+  "<!DOCTYPE html>",
+    "<html>",
+    "<head>",
+    "<title>" ++ title ++ "</title>",
+    "<script type=\"text/x-mathjax-config\">",
+      "MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});",
+    "</script>",
+    "<script type=\"text/javascript\"",
+      "src=\"http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML\">",
+    "</script>",
+    "</head>",
+    "<body>"]
+
+documentFooter :: String
+documentFooter = unlines
+  ["</body>","</head>"]
+
+generateHTML :: String -> Document -> String
+generateHTML title doc = 
+  documentHeader title
+  ++ serialize doc
+  ++ documentFooter 
 
 serialize :: Document -> String
 serialize = concatMap genBlock

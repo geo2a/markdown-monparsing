@@ -26,7 +26,7 @@ main = do
   putStrLn $ "\nGenerated html, will be written to " ++ outputFName ++ ": " 
   case a of 
     Right doc -> do
-      let html = serialize . fst $ doc
+      let html = generateHTML "test" . fst $ doc
       print $ html
       writeFile outputFName html 
     Left err -> 

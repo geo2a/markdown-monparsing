@@ -121,7 +121,8 @@ blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 -- |Черновик для латех-блоков
 latex :: TM.TextualMonoid t => Parser t Block
 latex = (bracket (string "$$") (some (sat (/= '$'))) (string "$$")) >>= 
-  return . Paragraph . (\x -> [x]) . NonEmpty . (\x -> [x]) . Plain
+  return . Paragraph . (\x -> [x]) . NonEmpty . (\x -> [x]) . Plain . 
+    (\x -> "$$" ++ x ++ "$$") 
 
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
