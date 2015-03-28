@@ -23,12 +23,13 @@ executable markdown_monparsing
                        HTMLGen
   build-depends:       base>=4.6,
                        mtl>=2.2.1,
-                       monoid-subclasses,
+                       monoid-subclasses >= 4.0.4,
                        directory
   hs-source-dirs:      src
                        src/Utils
                        src/Parsers
                        src/Renderers
+  Default-Language: Haskell2010
 
 test-suite Commom-Parsers-Test
   type:                exitcode-stdio-1.0
@@ -40,7 +41,7 @@ test-suite Commom-Parsers-Test
                        Helpers
   build-depends:       base >= 4 && < 5,
                        mtl,
-                       monoid-subclasses,
+                       monoid-subclasses >= 4.0.4,
                        HUnit,
                        tasty >= 0.7,
                        tasty-hunit
