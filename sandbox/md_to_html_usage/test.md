@@ -1,12 +1,13 @@
+$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$
+
 # The Beatles
 
 * Yellow **Submarine**
-* Strawberry Fie*l*ds *Forever*
+* Strawberry Fields *Forever*
 
 # Rainbow
 
 Temple Of The King
-
 
 
 

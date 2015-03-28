@@ -118,6 +118,12 @@ unorderdList = do
 blank :: TM.TextualMonoid t => Parser t Block
 blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 
+-- |Черновик для латех-блоков
+latex :: TM.TextualMonoid t => Parser t Block
+latex = (bracket (string "$$") (some (sat (/= '$'))) (string "$$")) >>= 
+  return . Paragraph . (\x -> [x]) . NonEmpty . (\x -> [x]) . Plain . 
+    (\x -> "$$" ++ x ++ "$$") 
+
 -----------------------------------------------------------------
 -------------------Parsers for whole Document--------------------
 -----------------------------------------------------------------
@@ -125,6 +131,5 @@ blank = many (sat wspaceOrTab) >> char '\n' >> return Blank
 -- |Парсит документ и возвращает список блоков
 doc :: TM.TextualMonoid t => Parser t Document
 doc = do
-  --h <- header
-  ls <- some (blank <|> header <|> paragraph <|> unorderdList)
+  ls <- some (blank <|> header <|> paragraph <|> unorderdList <|> latex)
   return $ ls
