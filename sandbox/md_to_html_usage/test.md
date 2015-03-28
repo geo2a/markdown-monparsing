@@ -1,7 +1,7 @@
 # The Beatles
 
 * Yellow **Submarine**
-* Strawberry Fie*l*ds *Forever*
+* Strawberry Fields Forever*
 
 # Rainbow
 
