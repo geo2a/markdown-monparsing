@@ -2,6 +2,8 @@
 
 This repository contains materials connected with monadic parsers in Haskell and developing source code of parser for markdown documents.
 
+![Example](sandbox/md_to_html_usage/md-html.png)
+
 # Tests reports: 
 
 ## Status of branch master
