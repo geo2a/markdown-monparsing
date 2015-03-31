@@ -168,10 +168,6 @@ string s = do
 word :: TM.TextualMonoid t => Parser t String 
 word = some letter
 
--- |Like word, but may contain digits
-alphanums :: TM.TextualMonoid t => Parser t String 
-alphanums = some alphanum
-
 -- |Parse a token with specific parser, throw away any trailing spaces
 token :: TM.TextualMonoid t => Parser t a -> Parser t a
 token p = spaces >> p
