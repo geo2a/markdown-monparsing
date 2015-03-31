@@ -10,16 +10,10 @@ This repository contains materials connected with monadic parsers in Haskell and
 
 [![Build Status](https://travis-ci.org/geo2a/markdown_monparsing.svg?branch=master)](https://travis-ci.org/geo2a/markdown_monparsing)
 
-[![Coverage Status](https://coveralls.io/repos/geo2a/markdown_monparsing/badge.svg)](https://coveralls.io/r/geo2a/markdown_monparsing)
-
 ## Status of branch dev
 
 [![Build Status](https://travis-ci.org/geo2a/markdown_monparsing.svg?branch=dev)](https://travis-ci.org/geo2a/markdown_monparsing)
 
-[![Coverage Status](https://coveralls.io/repos/geo2a/markdown_monparsing/badge.svg)](https://coveralls.io/r/geo2a/markdown_monparsing)
-
 ## Status of branch `experimental`
 
 [![Build Status](https://travis-ci.org/geo2a/markdown_monparsing.svg?branch=experimental)](https://travis-ci.org/geo2a/markdown_monparsing)
-
-[![Coverage Status](https://coveralls.io/repos/geo2a/markdown_monparsing/badge.svg)](https://coveralls.io/r/geo2a/markdown_monparsing)

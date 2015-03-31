@@ -6,34 +6,23 @@ import Parsers
 import MDParse
 import HTMLGen
 
-inputFName :: FilePath
-inputFName = "sandbox/md_to_html_usage/test.md"
+data OutputFormat = HTML
 
-outputFName :: FilePath
-outputFName = "sandbox/md_to_html_usage/test.html"
+outputName :: OutputFormat -> String
+outputName HTML = "output.html"
 
-inp = unlines [
-    "# An h1 header",
-    "",
-    "Paragraphs are separated by a blank line"
-  ]
+errorLogFile :: String
+errorLogFile = "error.log"
 
 main = do 
-  --[fname] <- getArgs
-  raw <- readFile inputFName
-  
-  ------------markdown parsing experiments------------
-  putStrLn $ "Raw contents of markdown file " ++ inputFName ++ ": "
-  putStrLn raw
-  let a = parse doc raw
-
-  ------------html generation experiments------------
-  putStrLn $ "\nGenerated html, will be written to " ++ outputFName ++ ": " 
-  case a of 
+  [fname] <- getArgs
+  raw <- readFile fname
+  putStrLn $ "\nGenerated html, will be written to " ++ outputName HTML ++ ": " 
+  case (parse doc raw) of 
     Right tree -> do
-      putStrLn $ "Parsed markdown: " ++ show(tree)
-      let html = generateHTML "test" . fst $ tree
-      print $ html
-      writeFile outputFName html 
+      --putStrLn $ "Parsed markdown: " ++ show(tree)
+      let html = generateHTML (outputName HTML) . fst $ tree
+      --print $ html
+      writeFile (outputName HTML) html 
     Left err -> 
-      print err 
+      writeFile (show err) errorLogFile
