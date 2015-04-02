@@ -10,7 +10,6 @@ import Control.Monad
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Error
 import Control.Monad.Except
 import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
@@ -40,18 +39,24 @@ data ParseError = Undefined String
   
 type ErrorReport t = (ParseError, (ParserState t))
 
-instance TM.TextualMonoid t => Error (ErrorReport t) where
-  noMsg    = (Undefined "", brokenState)
-  strMsg s = (Undefined s, brokenState)
-
 newtype Parser t a = Parser (  
     StateT (ParserState t) (Either (ErrorReport t)) a
   ) deriving (Functor, Applicative, Monad,
               MonadState (ParserState t)
               , MonadError (ErrorReport t)
-              , MonadPlus
-              , Alternative
               )
+
+--Потенциально проблемное место
+instance TM.TextualMonoid t => MonadPlus (Parser t) where
+  mzero = throwError (Undefined "", brokenState)
+  ma `mplus` mb = 
+    catchError ma $ \ea ->
+      catchError mb $ \eb -> 
+        throwError eb
+
+instance TM.TextualMonoid t => Alternative (Parser t) where
+  empty = mzero
+  (<|>) = mplus
 
 parse :: TM.TextualMonoid t => 
   Parser t a -> t -> Either (ErrorReport t) (a,ParserState t)
