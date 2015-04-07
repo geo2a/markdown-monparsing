@@ -119,7 +119,6 @@ nonEmptyLine = do
 -- поддерживаются только заголовки в стиле #
 header :: TM.TextualMonoid t => Parser t Block 
 header = do
-  many (sat wspaceOrTab) -- spaces, но без \n, TODO^: дать этой функции имя
   hashes <- token (some (char '#')) 
   text <- nonEmptyLine
   return $ Header (length hashes,text)

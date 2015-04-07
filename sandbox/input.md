@@ -1,20 +1,21 @@
-#An h1 header
+# Заголовок первого уровня
 
-Paragraphs are separated by a blank line.
+Параграфы отделяются пустой строкой
 
-2nd paragraph. *Italic*, **bold**, and `monospace`. Itemized lists
-look like:
+Второй параграф. *Наклонный,* **Полужирный,** и `Моноширинный.` 
 
-  * this one
-  * that one
-  * the other one
+Неупорядоченный список: 
 
-> Block quotes are
-> written like so.
+* Пункт
+* Другой
+* Ещё один
+
+> Блочные цитаты 
+> записываются так.
 >
-> They can span multiple paragraphs,
-> if you like.
+> Могут содержать,
+> несколько параграфов.
 
-## An h2 header
+## Возможны блочные вставки LaTeX: 
 
-$$I = \int \rho R^{2} dV$$
+$$e^{i \pi} + 1 = 0$$
