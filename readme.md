@@ -2,6 +2,8 @@
 
 Simple Markdown to HTML converter
 
+[![Build Status](https://travis-ci.org/geo2a/markdown-monparsing.svg?branch=master)](https://travis-ci.org/geo2a/markdown-monparsing)
+
 ## Features
 
 * Headers
@@ -14,7 +16,7 @@ Simple Markdown to HTML converter
 
 To build this project you need to have haskell [stack](http://docs.haskellstack.org/en/stable/README.html) installed.
 
-To build just run: 
+To build just run:
 
 ```
 stack build
@@ -26,7 +28,7 @@ To test:
 stack test
 ```
 
-To convert example markdown file to html: 
+To convert example markdown file to html:
 
 ```
 stack exec markdown-monparsing -- examples/example.md -o examples/example.html
