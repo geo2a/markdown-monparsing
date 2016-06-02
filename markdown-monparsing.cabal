@@ -9,7 +9,7 @@ category:            Text
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable markdown_monparsing
+executable markdown-monparsing
   main-is:             Main.hs
   other-modules:       Helpers,
                        Parsers,

@@ -16,3 +16,8 @@ cabal.sandbox.config
 *.aux
 *.hp
 .stack-work/
+
+# Other #
+#########
+
+examples/*.html

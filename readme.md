@@ -1,19 +1,35 @@
 # Description:
 
-This repository contains materials connected with monadic parsers in Haskell and developing source code of parser for markdown documents.
+Simple Markdown to HTML converter
 
-![Example](sandbox/md_to_html_usage/md-html.png)
+[![Build Status](https://travis-ci.org/geo2a/markdown-monparsing.svg?branch=master)](https://travis-ci.org/geo2a/markdown_monparsing)
 
-# Tests reports:
+## Features
 
-## Status of branch master
+* Headers
+* Paragraphs
+* Lists (non-nested)
+* Block quotes  
+* Latex blocks
 
-[![Build Status](https://travis-ci.org/geo2a/markdown_monparsing.svg?branch=master)](https://travis-ci.org/geo2a/markdown_monparsing)
+## Development
 
-## Status of branch dev
+To build this project you need to have haskell [stack](http://docs.haskellstack.org/en/stable/README.html) installed.
 
-[![Build Status](https://travis-ci.org/geo2a/markdown_monparsing.svg?branch=dev)](https://travis-ci.org/geo2a/markdown_monparsing)
+To build just run: 
 
-## Status of branch `experimental`
+```
+stack build
+```
 
-[![Build Status](https://travis-ci.org/geo2a/markdown_monparsing.svg?branch=experimental)](https://travis-ci.org/geo2a/markdown_monparsing)
+To test:
+
+```
+stack test
+```
+
+To convert example markdown file to html: 
+
+```
+stack exec markdown-monparsing -- examples/example.md -o examples/example.html
+```
