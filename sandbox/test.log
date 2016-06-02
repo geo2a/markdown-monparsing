@@ -1,0 +1,27 @@
+Test suite Commom-Parsers-Test: RUNNING...
+Tests
+  Unit Tests
+    Tests for single character parsers
+      Consuming one specified char:                                  OK
+      Invalid char yields error:                                     OK
+      Consuming one digit:                                           OK
+      Letter is not a digit:                                         OK
+    Tests for multy character parsers
+      Test cases for parser word
+        Parse until meeting with a space:                            OK
+        Fails on empty input:                                        OK
+      Test cases for parser token
+        If prefix spaces isn't presented -- just applies the parser: OK
+        Skips prefix spaces and parses string:                       OK
+        If internal parser fails -- so fails token:                  OK
+        Fails on empty input:                                        OK
+      Test cases for parser bracket
+        Parses string in simple char brackets:                       OK
+        Fails if first bracket parser does:                          OK
+        Fails if second bracket parser does:                         OK
+        Fails if internal parser does:                               OK
+        Fails on empty input:                                        OK
+
+All 15 tests passed (0.00s)
+Test suite Commom-Parsers-Test: PASS
+Test suite logged to: dist/test/markdown-monparsing-0.1.0.0-Commom-Parsers-Test.log

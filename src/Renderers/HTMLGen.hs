@@ -3,25 +3,61 @@ module HTMLGen where
 import Parsers
 import MDParse
 
+import System.Directory -- for demonstration 
+
+documentHeader :: String -> String
+documentHeader title = unlines [
+  "<!DOCTYPE html>",
+    "<html>",
+    "<head>",
+    "<title>" ++ title ++ "</title>",
+    "<script type=\"text/x-mathjax-config\">",
+      "MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});",
+    "</script>",
+    "<script type=\"text/javascript\"",
+      "src=\"http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML\">",
+    "</script>",
+    "</head>",
+    "<body>"]
+
+documentFooter :: String
+documentFooter = unlines
+  ["</body>","</html>"]
+
+generateHTML :: String -> Document -> String
+generateHTML title doc = 
+  documentHeader title
+  ++ serialize doc
+  ++ documentFooter 
+
 serialize :: Document -> String
 serialize = concatMap genBlock
-
--- Не очень понятно, в какой момент добавлять \n
 
 genBlock :: Block -> String
 genBlock Blank = "\n"
 genBlock (Header h) = 
   "<h" ++ s ++ ">" ++ genLine (snd h) ++ "</h" ++ s ++ ">" ++ "\n"
-  where s = show (fst h)
+    where s = show (fst h)
 genBlock (Paragraph p) = 
-  "<p>" ++ concatMap genLine p ++ "</p>" ++ "\n" 
+  "<p>" ++ concatMap genLine p ++ "</p>" ++ "\n"
+genBlock (UnorderedList l) = 
+  "<ul>" ++ concatMap ((++ "\n") . genOrderedListItem) l ++ "</ul>" ++ "\n"
+genBlock (BlockQuote bq) = 
+  "<blockquote>" ++ 
+    concatMap genBlock (map (Paragraph . (: [])) bq) ++ 
+  "</blockquote>" ++ "\n"
 
 genLine :: Line -> String
 genLine Empty        = ""
-genLine (NonEmpty []) = genLine Empty
-genLine (NonEmpty (l:ls)) = genInline l ++ " " ++  genLine (NonEmpty ls)   
+genLine (NonEmpty []) = genLine Empty ++ "\n"
+genLine (NonEmpty l) = concatMap ((++ " ") . genInline) l    
+
+genOrderedListItem :: Line -> String
+genOrderedListItem l = "<li>" ++ genLine l ++ "</li>" 
 
 genInline :: Inline -> String
 genInline (Plain s) = s
 genInline (Bold s) = "<strong>" ++ s ++ "</strong>"
 genInline (Italic s) = "<em>" ++ s ++ "</em>"
+genInline (Monospace s) = "<code>" ++ s ++ "</code>"
+

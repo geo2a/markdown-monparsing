@@ -1,99 +1,177 @@
+
+{-# LANGUAGE GeneralizedNewtypeDeriving
+             , FlexibleInstances #-}
+
 module Parsers where
 
 import Prelude hiding (splitAt)
-import Control.Applicative
+import Control.Applicative 
 import Control.Monad
-import Data.Maybe (maybeToList)
+import Control.Monad.Identity
+import Control.Monad.Reader
+import Control.Monad.State
+import Control.Monad.Except
+import Data.Maybe (fromJust, isJust)
 import Data.Monoid (mempty, mappend, mconcat)
 import qualified Data.Monoid.Textual as TM
 import Data.Char
 
---import Helpers
+type Position = (Int, Int)
 
-newtype Parser t a = Parser (t -> [(a,t)])
+-- | Describes parsing state: inout string and current position
+data TM.TextualMonoid t => 
+  ParserState t = ParserState { position :: Position
+                              , remainder  :: t
+                              } deriving (Eq)
 
-parse :: TM.TextualMonoid t => Parser t p -> t -> [(p,t)]
-parse (Parser p) = p
+brokenState :: TM.TextualMonoid t => ParserState t
+brokenState = ParserState (-1,-1) mempty
 
-instance TM.TextualMonoid t => Functor (Parser t) where
-  fmap = liftM
+instance TM.TextualMonoid t => Show (ParserState t) where
+  show st = "{pos = " ++ (show $ position st) ++ 
+    ", remainder = \"" ++ (TM.foldr_ (:) (mempty) (remainder st)) ++ "\"}"
 
-instance TM.TextualMonoid t => Applicative (Parser t) where
-  pure = return
-  (<*>) = ap
+data ParseError = Undefined String 
+                | EmptyRemainder String 
+                | UnsatisfiedPredicate String
+                | BracketError String
+  deriving (Show, Eq)
+  
+type ErrorReport t = (ParseError, (ParserState t))
+
+newtype Parser t a = Parser (  
+    StateT (ParserState t) (Either (ErrorReport t)) a
+  ) deriving (Functor, Applicative, Monad,
+              MonadState (ParserState t)
+              , MonadError (ErrorReport t)
+              )
+
+--Потенциально проблемное место
+instance TM.TextualMonoid t => MonadPlus (Parser t) where
+  mzero = throwError (Undefined "", brokenState)
+  ma `mplus` mb = 
+    catchError ma $ \ea ->
+      catchError mb $ \eb -> 
+        throwError eb
 
 instance TM.TextualMonoid t => Alternative (Parser t) where
+  empty = mzero
   (<|>) = mplus
-  empty = mzero   
 
-instance TM.TextualMonoid t => Monad (Parser t) where
-  return a = Parser (\cs -> [(a,cs)])
-  p >>= f  = Parser (\cs -> concat [parse (f a) cs' |
-                            (a,cs') <- parse p cs])
-  fail _   = Parser (\cs -> [])
+parse :: TM.TextualMonoid t => 
+  Parser t a -> t -> Either (ErrorReport t) (a,ParserState t)
+parse (Parser p) s = 
+  runStateT p (ParserState {remainder = s, position = initPos})
+    where initPos = (1,1)
 
-instance TM.TextualMonoid t => MonadPlus (Parser t) where
-  mzero = Parser (\cs -> [])
-  p `mplus` q = Parser (\cs -> 
-    let ps = parse p cs in 
-      if null ps then parse q cs else ps)
+reportError :: TM.TextualMonoid t => 
+  Either (ErrorReport t) (a,ParserState t) -> String
+reportError (Right _) = "Parsed successfully"
+reportError (Left (err, ParserState pos inp)) = 
+  "Parse error occured at " ++ show pos ++ ": "++ show err
 
--- |Consumes one symbol of any kind 
+-- | Consumes one symbol of any kind
+-- TODO: Продумать, как правильно отслеживать отступы и заложить это в парсере item
+-- TODO: Попробовать упросить, длинновато получилось
 item :: TM.TextualMonoid t => Parser t Char
-item =  Parser (maybeToList . TM.splitCharacterPrefix)
+item = do
+  state  <- get
+  -- trying to split remainder ((x:xs) analog)
+  let s = TM.splitCharacterPrefix . remainder $ state
+  case s of 
+    Nothing -> throwError (EmptyRemainder "item",state)
+    Just (c,rest) -> do  
+      let (c,rest) = fromJust s
+      put (ParserState {position = updatePos (position state) c, remainder = rest})
+      return c
+    where
+      updatePos :: Position -> Char -> Position
+      updatePos (line, col) c =
+        case c of 
+          '\n' -> (line + 1,1)
+          '\t' -> (line,((col `div` 8)+1)*8)
+          _    -> (line,col + 1)  
 
 -- |Consumes item only if it satisfies predicate
--- В очередной раз восхитился супер-абстрактности монадического кода!
--- когда обобщал эту функцию до TextualMonoid, переписал только сигнатуру! 
 sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
 sat p = do
-  x <- item 
-  guard $ p x
-  return x
+  state <- get
+  x <- item `overrideError` (EmptyRemainder "sat")
+  if p x then return x else 
+    throwError (UnsatisfiedPredicate "general",state)
 
-------------------Парсеры для одиночных символов----------------
+--------------------Парсеры для одиночных символов----------------
 
--- |Consumes item only if it is equal to specified char
+-- |Helper function, overrides error that may occur in parser p 
+-- |with custom message 
+overrideError :: Parser t a -> ParseError -> Parser t a
+overrideError p err = do
+  state <- get
+  p `catchError` \(oldErr, oldState) ->
+    case oldErr of
+      EmptyRemainder s -> throwError (EmptyRemainder s, state)
+      _ -> throwError (err, state)
+  where
+    getMsg (Undefined s) = s
+    getMsg (EmptyRemainder s) = s
+    getMsg (UnsatisfiedPredicate s) = s
+    getMsg (BracketError s) = s
+
+---- |Consumes item only if it is equal to specified char
 char :: TM.TextualMonoid t => Char -> Parser t Char
-char x = sat (\y -> x == y)
+char x = (sat (== x)) `overrideError` 
+  (UnsatisfiedPredicate ("char " ++ [x]))
 
----- |Decimal digit
+-- |Decimal digit
 digit :: TM.TextualMonoid t => Parser t Char
-digit = sat isDigit
+digit = sat isDigit `overrideError`  
+  (UnsatisfiedPredicate "digit")
 
 -- |Lowercase letter
 lower :: TM.TextualMonoid t => Parser t Char
-lower = sat isLower
+lower = sat isLower `overrideError` 
+  (UnsatisfiedPredicate "lower")
 
 -- |Uppercase letter
 upper :: TM.TextualMonoid t => Parser t Char
-upper = sat isUpper
+upper = sat isUpper `overrideError`
+    (UnsatisfiedPredicate "upper")
 
 -- |Anycase letter
+-- TODO: обобщить отлов ошибок
 letter :: TM.TextualMonoid t => Parser t Char
-letter = lower <|> upper
+letter = do
+  state <- get
+  lower <|> upper
+  --lower `catchError` \(UnsatisfiedPredicate _,_) -> 
+  --  upper `catchError` \(UnsatisfiedPredicate _,_) ->
+  --    throwError (UnsatisfiedPredicate "letter",state)
 
--- |Anycase letter or decimal digit
+---- |Anycase letter or decimal digit
 alphanum :: TM.TextualMonoid t => Parser t Char
-alphanum = letter <|> digit
+alphanum = do
+  state <- get
+  letter <|> digit
+  --letter `catchError` \(UnsatisfiedPredicate _,_) -> 
+  --  digit `catchError` \(UnsatisfiedPredicate _,_) -> 
+  --    throwError (UnsatisfiedPredicate "alphanum",state)
 
-newline :: TM.TextualMonoid t => Parser t Char
-newline  = char '\n'  
-------------------Парсеры для групп символов----------------
+newline :: TM.TextualMonoid t => Parser t ()
+newline  = char '\n' `overrideError` 
+  (UnsatisfiedPredicate "newline") >> return ()
 
----- ОФИГЕТЬ!! Добавив инстанс для Alternative, 
----- мы даром получаем many == Alternative.many и 
----- many1 == Alternative.some 
+------------------------Парсеры для групп символов----------------
 
--- TODO: подумать, что делать с возвращаемым значение следующего парсера
--- стоит оставить String, или переделать на t? 
 -- |Parse a specified string
 string :: TM.TextualMonoid t => String -> Parser t String
-string = mapM char
+string s = do
+  state <- get
+  (mapM char s) `overrideError` 
+    (UnsatisfiedPredicate ("string " ++ s))
 
 -- |Word (non-empty string of letters)
 word :: TM.TextualMonoid t => Parser t String 
-word = some letter 
+word = some letter
 
 -- |Parse a token with specific parser, throw away any trailing spaces
 token :: TM.TextualMonoid t => Parser t a -> Parser t a
@@ -103,38 +181,19 @@ token p = spaces >> p
 symbol :: TM.TextualMonoid t => String -> Parser t String
 symbol cs = token (string cs)
 
----- TODO: Это, похоже, не востребовано
----- |Parse identifier, i.e. word with leading lowercase letters and trailing alphanums 
---ident :: Parser String
---ident = do
---  x <- lower
---  xs <- many alphanum
---  return (x:xs)
-
----- TODO: Это, похоже, не востребовано
----- |Same as ident but fails if argument is a member of list of keywords
---identifier :: [String] -> Parser String
---identifier kwords = do
---  x <- ident
---  if elem x kwords then return "" else return x
-
 -- |Parse a thing enclosed by brackets
 bracket :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t c -> Parser t b
 bracket open p close = do 
-  open
+  open `overrideError` (BracketError "invalid opening bracket") 
   x <- p
-  close
+  close `overrideError` (BracketError "invalid closing bracket")
   return x
 
-------------------"Lexical issues"----------------
-spaces :: TM.TextualMonoid t => Parser t String
-spaces = many (sat isSpace)
+--------------------"Lexical issues"----------------
+spaces :: TM.TextualMonoid t => Parser t ()
+spaces = many (sat isSpace) >> return ()
 
-------------------Repetitions with seporators----------------
----- TODO: parse (word `sepby1` spaces) "aaa@aaa" == [(["aaa"],"@aaa")]
----- Разве не должен парсер sepby1 фейлится в таком случае? Разобраться.
----- Может быть, стоит добавить что-то вроде: guard $ null as?   
-
+--------------------Repetitions with seporators---------------- 
 sepby :: TM.TextualMonoid t => Parser t a -> Parser t b -> Parser t [a]
 p `sepby` sep = (p `sepby1` sep) <|> return []
 
@@ -143,4 +202,3 @@ p `sepby1` sep = do
   a <- p
   as <- many (sep >> p)
   return (a:as)
-  -- or this: (:) <$> p <∗> many (sep >> p)

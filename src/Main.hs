@@ -6,24 +6,23 @@ import Parsers
 import MDParse
 import HTMLGen
 
-inputFName :: FilePath
-inputFName = "sandbox/md_to_html_usage/test.md"
+data OutputFormat = HTML
 
-outputFName :: FilePath
-outputFName = "sandbox/md_to_html_usage/test.html"
+outputName :: OutputFormat -> String
+outputName HTML = "output.html"
 
-main = do
-  --[fname] <- getArgs
-  raw <- readFile inputFName
-  
-  ------------markdown parsing experiments------------
-  putStrLn $ "Raw contents of markdown file " ++ inputFName ++ ": "
-  putStrLn raw
-  let a = fst . head $ parse doc raw
-  print a
+errorLogFile :: String
+errorLogFile = "error.log"
 
-  ------------html generation experiments------------
-  putStrLn $ "\nGenerated html, will be written to " ++ outputFName ++ ": " 
-  let html = serialize a
-  print $ html
-  writeFile outputFName html
+main = do 
+  [fname] <- getArgs
+  raw <- readFile fname
+  putStrLn $ "\nGenerated html, will be written to " ++ outputName HTML ++ ": " 
+  case (parse doc raw) of 
+    Right tree -> do
+      --putStrLn $ "Parsed markdown: " ++ show(tree)
+      let html = generateHTML (outputName HTML) . fst $ tree
+      --print $ html
+      writeFile (outputName HTML) html 
+    Left err -> 
+      writeFile (show err) errorLogFile
