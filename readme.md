@@ -2,8 +2,6 @@
 
 Simple Markdown to HTML converter
 
-[![Build Status](https://travis-ci.org/geo2a/markdown-monparsing.svg?branch=master)](https://travis-ci.org/geo2a/markdown_monparsing)
-
 ## Features
 
 * Headers
